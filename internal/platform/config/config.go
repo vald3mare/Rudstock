@@ -7,7 +7,7 @@ import "github.com/caarlos0/env/v11"
 // поэтому приложение падает, если они не заданы.
 type Config struct {
 	// HTTPAddr это адрес, на котором слушает HTTP-сервер, например ":8080".
-	HTTPAddr string `env:"HTTP_ADDR" envDefault:":8080"`
+	HTTPAddr string `env:"HTTP_ADDR" envDefault:":8081"`
 	// DBDSN это строка подключения к Postgres. Содержит пароль,
 	// поэтому значения по умолчанию у неё нет: локально берётся из .env.
 	DBDSN string `env:"DB_DSN,required"`
