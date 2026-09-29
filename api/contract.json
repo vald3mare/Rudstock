@@ -1,0 +1,22 @@
+{
+    ПУБЛИЧНЫЕ РУЧКИ
+    /card/create - создание карточик
+
+    POST json {
+        category_id: 1,
+        description: "",
+        price: 100.00,
+        photo_url: "s3://photo_1" (minio)
+    } -> card_id / error
+
+    /category/create - использует фронт когда человек сам хочет создать категорию
+
+    ПРИВАТНЫЕ РУЧКИ
+    /selectyres/card/create -> прошлись по файлу -> достали товары
+
+    POST json {
+        category_id: 1, -> "шины"
+        description: "большая строка"
+        price: 100.00 // цена под наценку
+    }
+}
