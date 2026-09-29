@@ -1,6 +1,12 @@
 package config
 
-import "github.com/caarlos0/env/v11"
+import (
+	"errors"
+	"io/fs"
+
+	"github.com/caarlos0/env/v11"
+	"github.com/joho/godotenv"
+)
 
 // Config собирается из переменных окружения на старте приложения.
 // У всего, кроме секретов, есть значение по умолчанию; секреты обязательны,
@@ -17,8 +23,15 @@ type Config struct {
 	EnvMode string `env:"ENV_MODE" envDefault:"development"`
 }
 
-// Load читает конфигурацию из окружения и проверяет обязательные поля.
+// Load читает .env (если он есть), затем конфигурацию из окружения
+// и проверяет обязательные поля.
 func Load() (*Config, error) {
+	// .env нужен только локально, в проде переменные задаются окружением.
+	// Отсутствие файла не ошибка, а вот битый файл это ошибка.
+	if err := godotenv.Load(); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	}
+
 	cfg := &Config{}
 	if err := env.Parse(cfg); err != nil {
 		return nil, err
