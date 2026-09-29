@@ -1,5 +1,5 @@
-// Package errs описывает ошибки приложения в терминах предметной области,
-// а не транспорта. Слои app и domain возвращают ошибки этого пакета;
+// Package errs описывает ошибки приложения, не привязанные к транспорту.
+// Контроллеры переводят в них доменные ошибки (domain.ErrXxx);
 // перевод в HTTP-коды делает только пакет httpx.
 package errs
 
@@ -12,6 +12,7 @@ const (
 	KindNotFound     Kind = "not_found"
 	KindForbidden    Kind = "forbidden"
 	KindConflict     Kind = "conflict"
+	KindTooLarge     Kind = "too_large"
 	KindInternal     Kind = "internal"
 )
 
@@ -20,7 +21,7 @@ const (
 // (запрос к БД, ответ поставщика) и предназначена исключительно для логов.
 type Error struct {
 	Kind Kind   // категория, по ней httpx выбирает код ответа
-	Slug string // стабильный машинный код, например "product-not-found"
+	Slug string // стабильный машинный код, например "category-not-found"
 	Msg  string // текст для пользователя
 	err  error  // причина, неэкспортируемая, чтобы не утекла в ответ
 }
@@ -72,6 +73,15 @@ func Forbidden(slug string, msg string, err error) *Error {
 func Conflict(slug string, msg string, err error) *Error {
 	return &Error{
 		Kind: KindConflict,
+		Slug: slug,
+		Msg:  msg,
+		err:  err,
+	}
+}
+
+func TooLarge(slug string, msg string, err error) *Error {
+	return &Error{
+		Kind: KindTooLarge,
 		Slug: slug,
 		Msg:  msg,
 		err:  err,

@@ -11,10 +11,10 @@ import (
 	"github.com/vald3mare/Rudstock/internal/platform/errs"
 )
 
-// Err это тело ответа при ошибке. Наружу уходят только слаг и сообщение:
+// ErrorResponse это тело ответа при ошибке. Наружу уходят только слаг и сообщение:
 // причина (запрос к БД, ответ поставщика) остаётся в логах.
-type Err struct {
-	Slug string `json:"slug"` // машинный код для фронта, например "product-not-found"
+type ErrorResponse struct {
+	Slug string `json:"slug"` // машинный код для фронта, например "category-not-found"
 	Msg  string `json:"msg"`  // текст для пользователя
 }
 
@@ -30,6 +30,8 @@ func statusFromKind(kind errs.Kind) int {
 		return http.StatusForbidden
 	case errs.KindConflict:
 		return http.StatusConflict
+	case errs.KindTooLarge:
+		return http.StatusRequestEntityTooLarge
 	default:
 		return http.StatusInternalServerError
 	}
@@ -51,7 +53,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 			slog.Warn("client error", "error", err, "method", r.Method, "path", r.URL.Path)
 		}
 
-		WriteJSON(w, r, status, Err{
+		WriteJSON(w, r, status, ErrorResponse{
 			Slug: appErr.Slug,
 			Msg:  appErr.Msg,
 		})
@@ -61,7 +63,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	// Сюда попадают ошибки, которые не завернули в errs: из библиотек или забытые.
 	// Наружу отдаём нейтральный текст, подробности только в лог.
 	slog.Error("unexpected error", "error", err, "method", r.Method, "path", r.URL.Path)
-	WriteJSON(w, r, http.StatusInternalServerError, Err{
+	WriteJSON(w, r, http.StatusInternalServerError, ErrorResponse{
 		Slug: "internal-error",
 		Msg:  "Internal server error",
 	})

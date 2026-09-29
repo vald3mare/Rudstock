@@ -2,7 +2,11 @@ package postgres
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vald3mare/Rudstock/internal/catalog/domain"
 )
@@ -18,6 +22,29 @@ func NewCardRepo(pool *pgxpool.Pool) *CardRepo {
 	}
 }
 
-func (r *CardRepo) Create(ctx context.Context, card domain.Card) (int64, error) {
-	return 0, nil
+// вот и сама реализация создания карточки, именно от сюда мы и ходим в бд
+func (r *CardRepo) Create(ctx context.Context, card domain.Card) (uuid.UUID, error) {
+	// id и created_at не передаем, их проставляют DEFAULT'ы в таблице
+	const query = `
+		INSERT INTO cards (category_id, description, price, photo_url)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id`
+
+	var id uuid.UUID
+	err := r.pool.QueryRow(ctx, query,
+		card.CategoryID,
+		card.Description,
+		card.Price,
+		card.PhotoURL,
+	).Scan(&id)
+	if err != nil {
+		// 23503 foreign_key_violation: категории с таким id нет
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			return uuid.Nil, domain.ErrCategoryNotFound
+		}
+		return uuid.Nil, fmt.Errorf("insert card: %w", err)
+	}
+
+	return id, nil
 }

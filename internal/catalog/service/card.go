@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/vald3mare/Rudstock/internal/catalog/domain"
 )
 
@@ -32,12 +33,12 @@ type CreateCardInput struct {
 
 // общий интерфейс
 type CardService interface {
-	Create(ctx context.Context, in CreateCardInput) (int64, error)
+	Create(ctx context.Context, in CreateCardInput) (uuid.UUID, error)
 }
 
 // что сервису нужно для хранилища (тут описываем требование)
 type CardRepo interface {
-	Create(ctx context.Context, card domain.Card) (int64, error)
+	Create(ctx context.Context, card domain.Card) (uuid.UUID, error)
 }
 
 // закрытый экземпляр с начинкой
@@ -51,10 +52,10 @@ func NewCardService(repo CardRepo) CardService {
 }
 
 // создаем карточку
-func (s *cardService) Create(ctx context.Context, in CreateCardInput) (int64, error) {
+func (s *cardService) Create(ctx context.Context, in CreateCardInput) (uuid.UUID, error) {
 	// цена в копейках, бесплатных и отрицательных карточек не бывает
 	if in.Price <= 0 {
-		return 0, domain.ErrInvalidPrice
+		return uuid.Nil, domain.ErrInvalidPrice
 	}
 
 	// собираем доменную карточку из инпута, ID и CreatedAt проставляет хранилище
@@ -67,7 +68,7 @@ func (s *cardService) Create(ctx context.Context, in CreateCardInput) (int64, er
 
 	id, err := s.cardRepo.Create(ctx, card)
 	if err != nil {
-		return 0, fmt.Errorf("create card: %w", err)
+		return uuid.Nil, fmt.Errorf("create card: %w", err)
 	}
 
 	return id, nil

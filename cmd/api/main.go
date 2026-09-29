@@ -11,6 +11,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/vald3mare/Rudstock/internal/catalog/controller/rest"
+	"github.com/vald3mare/Rudstock/internal/catalog/repository/postgres"
+	"github.com/vald3mare/Rudstock/internal/catalog/service"
 	"github.com/vald3mare/Rudstock/internal/platform/config"
 	"github.com/vald3mare/Rudstock/internal/platform/httpx"
 )
@@ -45,8 +49,34 @@ func main() {
 	// Логгер ставится глобально: пакеты platform пишут через slog.Default()
 	slog.SetDefault(slog.New(handler))
 
+	// Контекст отменяется по SIGINT/SIGTERM. Создаём его до подключения к базе,
+	// чтобы Ctrl+C прерывал и старт, а не только работу сервера.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	pool, err := pgxpool.New(ctx, conf.DBDSN)
+	if err != nil {
+		slog.Error("create db pool", "error", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+
+	// New не подключается сразу, соединения создаются лениво.
+	// Ping проверяет базу при старте, а не на первом запросе пользователя.
+	pingCtx, cancelPing := context.WithTimeout(ctx, 5*time.Second)
+	defer cancelPing()
+	if err := pool.Ping(pingCtx); err != nil {
+		slog.Error("ping db", "error", err)
+		os.Exit(1)
+	}
+
+	repo := postgres.NewCardRepo(pool)
+	svc := service.NewCardService(repo)
+	h := rest.NewCardHandler(svc)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", Health)
+	mux.Handle("/", rest.NewRouter(h))
 
 	// Таймауты обязательны: без них зависшее соединение держит ресурсы бесконечно
 	server := &http.Server{
@@ -60,18 +90,13 @@ func main() {
 	// Буфер на 1, чтобы горутина не зависла на отправке, если main уже вышел
 	errChan := make(chan error, 1)
 
+	slog.Info("listening", "addr", conf.HTTPAddr)
 	go func() {
 		// ErrServerClosed это штатный ответ на Shutdown, а не сбой
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errChan <- err
 		}
 	}()
-
-	// NotifyContext отменяет ctx по SIGINT или SIGTERM, закрывая ctx.Done().
-	// stop снимает подписку, чтобы повторный сигнал убил процесс принудительно,
-	// если плавная остановка подвиснет
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	// Ждём, что наступит раньше: падение сервера или сигнал на остановку
 	select {

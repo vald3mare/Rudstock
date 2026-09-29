@@ -27,6 +27,10 @@ func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 
 	decErr := dec.Decode(dst)
 	if decErr != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(decErr, &maxErr) {
+			return errs.TooLarge("body-too-large", "Request body must not exceed 1 MB", decErr)
+		}
 		return errs.InvalidInput("invalid-json-body", "Invalid JSON", decErr)
 	}
 
