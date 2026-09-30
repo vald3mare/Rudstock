@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vald3mare/Rudstock/internal/catalog/domain"
@@ -48,4 +49,46 @@ func (r *CardRepo) Create(ctx context.Context, card domain.Card) (uuid.UUID, err
 	}
 
 	return card_id, nil
+}
+
+// List читает страницу карточек и отдельным запросом общее число под фильтром.
+func (r *CardRepo) List(ctx context.Context, filter domain.CardFilter) ([]domain.Card, int64, error) {
+	// $1 = 0 выключает фильтр по категории, так не нужно собирать SQL строкой.
+	// id во втором ключе сортировки: у карточек с одинаковым created_at
+	// порядок должен быть стабильным, иначе они будут прыгать между страницами.
+	const listQuery = `
+		SELECT id, category_id, description, price, photo_url, created_at
+		FROM cards
+		WHERE ($1::bigint = 0 OR category_id = $1)
+		ORDER BY created_at DESC, id DESC
+		LIMIT $2 OFFSET $3`
+
+	const countQuery = `
+		SELECT count(*)
+		FROM cards
+		WHERE ($1::bigint = 0 OR category_id = $1)`
+
+	rows, err := r.pool.Query(ctx, listQuery, filter.CategoryID, filter.Limit, filter.Offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("select cards: %w", err)
+	}
+
+	// CollectRows сам закрывает rows и возвращает пустой срез, а не nil, если строк нет
+	cards, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (domain.Card, error) {
+		var c domain.Card
+		err := row.Scan(&c.ID, &c.CategoryID, &c.Description, &c.Price, &c.PhotoURL, &c.CreatedAt)
+		return c, err
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("scan cards: %w", err)
+	}
+
+	// total считаем отдельно: count(*) OVER () в первом запросе вернул бы 0,
+	// если страница за пределами списка и строк нет
+	var total int64
+	if err := r.pool.QueryRow(ctx, countQuery, filter.CategoryID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count cards: %w", err)
+	}
+
+	return cards, total, nil
 }

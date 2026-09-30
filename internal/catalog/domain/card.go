@@ -14,3 +14,10 @@ type Card struct {
 	PhotoURL    string
 	CreatedAt   time.Time
 }
+
+// CardFilter условия выборки списка карточек.
+type CardFilter struct {
+	CategoryID int64 // 0 означает без фильтра по категории
+	Limit      int
+	Offset     int
+}

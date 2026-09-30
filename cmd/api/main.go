@@ -70,13 +70,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	repo := postgres.NewCardRepo(pool)
-	svc := service.NewCardService(repo)
-	h := rest.NewCardHandler(svc)
+	cardHandler := rest.NewCardHandler(service.NewCardService(postgres.NewCardRepo(pool)))
+	categoryHandler := rest.NewCategoryHandler(service.NewCategoryService(postgres.NewCategoryRepo(pool)))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", Health)
-	mux.Handle("/", rest.NewRouter(h))
+	mux.Handle("/", rest.NewRouter(cardHandler, categoryHandler))
 
 	// Таймауты обязательны: без них зависшее соединение держит ресурсы бесконечно
 	server := &http.Server{

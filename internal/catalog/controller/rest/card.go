@@ -40,12 +40,50 @@ func (h *CardHandler) Create(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, r, http.StatusCreated, CreateCardResponse{CardID: id})
 }
 
+// GET /cards?category_id=&page=&limit=
+func (h *CardHandler) List(w http.ResponseWriter, r *http.Request) {
+	categoryID, err := httpx.QueryInt64(r, "category_id")
+	if err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+	page, err := httpx.QueryInt64(r, "page")
+	if err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+	limit, err := httpx.QueryInt64(r, "limit")
+	if err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+
+	cards, total, err := h.svc.List(r.Context(), service.ListCardsInput{
+		CategoryID: categoryID,
+		Page:       int(page),
+		Limit:      int(limit),
+	})
+	if err != nil {
+		httpx.WriteError(w, r, mapCardError(err))
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, ListCardsResponse{
+		Items: toCardResponses(cards),
+		Total: total,
+	})
+}
+
 // mapCardError переводит доменные ошибки в errs, чтобы httpx выбрал правильный код.
 // Всё неизвестное уходит как есть, WriteError ответит 500.
 func mapCardError(err error) error {
 	switch {
 	case errors.Is(err, domain.ErrInvalidPrice):
 		return errs.InvalidInput("invalid-price", "Price must be greater than zero", err)
+	case errors.Is(err, domain.ErrInvalidCategoryID):
+		return errs.InvalidInput("invalid-category-id", "category_id is required", err)
+	case errors.Is(err, domain.ErrInvalidPagination):
+		return errs.InvalidInput("invalid-pagination", "page and limit must not be negative", err)
 	case errors.Is(err, domain.ErrCategoryNotFound):
 		return errs.NotFound("category-not-found", "Category not found", err)
 	default:

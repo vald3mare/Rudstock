@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/vald3mare/Rudstock/internal/platform/errs"
 )
@@ -41,4 +42,21 @@ func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	}
 
 	return nil
+}
+
+// QueryInt64 читает целочисленный query-параметр. Если параметра нет, возвращает 0:
+// что значит ноль (без фильтра, значение по умолчанию), решает вызывающий.
+// Не число это ошибка клиента, а не повод молча подставить ноль.
+func QueryInt64(r *http.Request, key string) (int64, error) {
+	raw := r.URL.Query().Get(key)
+	if raw == "" {
+		return 0, nil
+	}
+
+	v, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, errs.InvalidInput("invalid-query-param", "Query parameter "+key+" must be an integer", err)
+	}
+
+	return v, nil
 }

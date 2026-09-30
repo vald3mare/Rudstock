@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vald3mare/Rudstock/internal/catalog/domain"
@@ -42,4 +43,29 @@ func (r *CategoryRepo) Create(ctx context.Context, category domain.Category) (in
 	}
 
 	return category_id, nil
+}
+
+// List читает все категории, отсортированные по имени.
+func (r *CategoryRepo) List(ctx context.Context) ([]domain.Category, error) {
+	const query = `
+		SELECT id, name
+		FROM categories
+		ORDER BY name`
+
+	rows, err := r.pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("select categories: %w", err)
+	}
+
+	// CollectRows сам закрывает rows и возвращает пустой срез, а не nil, если строк нет
+	categories, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (domain.Category, error) {
+		var c domain.Category
+		err := row.Scan(&c.ID, &c.Name)
+		return c, err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("scan categories: %w", err)
+	}
+
+	return categories, nil
 }

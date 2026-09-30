@@ -9,4 +9,5 @@ var (
 	ErrInvalidCategoryID   = errors.New("invalid category id")
 	ErrInvalidCategoryName = errors.New("invalid category name")
 	ErrCategoryExists      = errors.New("category already exists")
+	ErrInvalidPagination   = errors.New("invalid pagination")
 )
