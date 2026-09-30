@@ -16,6 +16,7 @@ type CardRepo struct {
 	pool *pgxpool.Pool
 }
 
+// NewCardRepo конструктор репозитория карточек.
 func NewCardRepo(pool *pgxpool.Pool) *CardRepo {
 	return &CardRepo{
 		pool: pool,
@@ -30,13 +31,13 @@ func (r *CardRepo) Create(ctx context.Context, card domain.Card) (uuid.UUID, err
 		VALUES ($1, $2, $3, $4)
 		RETURNING id`
 
-	var id uuid.UUID
+	var card_id uuid.UUID
 	err := r.pool.QueryRow(ctx, query,
 		card.CategoryID,
 		card.Description,
 		card.Price,
 		card.PhotoURL,
-	).Scan(&id)
+	).Scan(&card_id)
 	if err != nil {
 		// 23503 foreign_key_violation: категории с таким id нет
 		var pgErr *pgconn.PgError
@@ -46,5 +47,5 @@ func (r *CardRepo) Create(ctx context.Context, card domain.Card) (uuid.UUID, err
 		return uuid.Nil, fmt.Errorf("insert card: %w", err)
 	}
 
-	return id, nil
+	return card_id, nil
 }

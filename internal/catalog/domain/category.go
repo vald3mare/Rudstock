@@ -1,8 +1,6 @@
 package domain
 
-import "github.com/google/uuid"
-
 type Category struct {
-	ID   uuid.UUID
+	ID   int64
 	Name string
 }
