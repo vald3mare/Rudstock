@@ -21,6 +21,14 @@ json {
 GET /cards (public) - список карточек
 query: category_id?, page?, limit?
 -> 200 {items: [...], total}
+
+GET /cards/{id} (public) - одна карточка
+-> 200 {id, category_id, description, price, photo_url, created_at} / error
+
+PATCH /admin/cards/{id} (admin) - частичное обновление карточки
+json {
+    price: 12999   // любое подмножество полей из POST, хотя бы одно
+} -> 200 карточка целиком / error
 */
 
 // Пагинация: 0 означает значение по умолчанию, limit больше максимума срезается до него
@@ -48,6 +56,15 @@ type ListCardsInput struct {
 	Limit      int   // необязательно, 0 означает defaultCardsLimit, максимум maxCardsLimit
 }
 
+// UpdateCardInput входные данные для частичного обновления карточки.
+// nil означает "не менять поле"; хотя бы одно поле должно быть задано.
+type UpdateCardInput struct {
+	CategoryID  *int64  // если задано: > 0, категория должна существовать
+	Description *string // если задано: любое, в том числе пустое
+	Price       *int64  // если задано: > 0, копейки
+	PhotoURL    *string // если задано: любое, в том числе пустое
+}
+
 // CardService бизнес-операции над карточками.
 type CardService interface {
 	// Create создаёт карточку и возвращает её id.
@@ -61,6 +78,11 @@ type CardService interface {
 	// Get возвращает карточку по её идентификатору.
 	// Ошибки: domain.ErrCardNotFound.
 	Get(ctx context.Context, id uuid.UUID) (domain.Card, error)
+
+	// Update меняет переданные поля карточки и возвращает её целиком после изменения.
+	// Ошибки: domain.ErrEmptyPatch, domain.ErrInvalidCategoryID, domain.ErrInvalidPrice,
+	// domain.ErrCardNotFound, domain.ErrCategoryNotFound.
+	Update(ctx context.Context, id uuid.UUID, in UpdateCardInput) (domain.Card, error)
 }
 
 // CardRepo что сервису нужно от хранилища (тут описываем требование)
@@ -75,6 +97,10 @@ type CardRepo interface {
 	// Get возвращает карточку по её идентификатору.
 	// Ошибки: domain.ErrCardNotFound.
 	Get(ctx context.Context, id uuid.UUID) (domain.Card, error)
+
+	// Update применяет patch и возвращает карточку после изменения.
+	// Ошибки: domain.ErrCardNotFound, domain.ErrCategoryNotFound.
+	Update(ctx context.Context, id uuid.UUID, patch domain.CardPatch) (domain.Card, error)
 }
 
 // закрытый экземпляр с начинкой
@@ -155,6 +181,38 @@ func (s *cardService) Get(ctx context.Context, id uuid.UUID) (domain.Card, error
 	card, err := s.cardRepo.Get(ctx, id)
 	if err != nil {
 		return domain.Card{}, fmt.Errorf("get card: %w", err)
+	}
+
+	return card, nil
+}
+
+// Update проверяет только переданные поля, теми же правилами, что и Create,
+// и отдаёт patch в репозиторий.
+func (s *cardService) Update(ctx context.Context, id uuid.UUID, in UpdateCardInput) (domain.Card, error) {
+	// пустой PATCH почти всегда ошибка клиента (опечатка в имени поля и т.п.),
+	// молча вернуть 200 без изменений значило бы её спрятать
+	if in.CategoryID == nil && in.Description == nil && in.Price == nil && in.PhotoURL == nil {
+		return domain.Card{}, domain.ErrEmptyPatch
+	}
+
+	if in.CategoryID != nil && *in.CategoryID <= 0 {
+		return domain.Card{}, domain.ErrInvalidCategoryID
+	}
+
+	if in.Price != nil && *in.Price <= 0 {
+		return domain.Card{}, domain.ErrInvalidPrice
+	}
+
+	patch := domain.CardPatch{
+		CategoryID:  in.CategoryID,
+		Description: in.Description,
+		Price:       in.Price,
+		PhotoURL:    in.PhotoURL,
+	}
+
+	card, err := s.cardRepo.Update(ctx, id, patch)
+	if err != nil {
+		return domain.Card{}, fmt.Errorf("update card: %w", err)
 	}
 
 	return card, nil

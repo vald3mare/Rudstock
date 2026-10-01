@@ -12,6 +12,7 @@ func NewRouter(cards *CardHandler, categories *CategoryHandler) http.Handler {
 
 	// admin
 	mux.HandleFunc("POST /admin/cards", cards.Create)
+	mux.HandleFunc("PATCH /admin/cards/{id}", cards.Update)
 	mux.HandleFunc("POST /admin/categories", categories.Create)
 
 	return mux

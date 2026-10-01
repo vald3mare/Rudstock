@@ -15,6 +15,15 @@ type CreateCardRequest struct {
 	PhotoURL    string `json:"photo_url"`
 }
 
+// UpdateCardRequest тело PATCH: указатели, чтобы отличить отсутствующее поле от нулевого значения.
+// Ограничение: явный null в JSON тоже станет nil, то есть "не менять поле".
+type UpdateCardRequest struct {
+	CategoryID  *int64  `json:"category_id"`
+	Description *string `json:"description"`
+	Price       *int64  `json:"price"`
+	PhotoURL    *string `json:"photo_url"`
+}
+
 type CreateCardResponse struct {
 	CardID uuid.UUID `json:"card_id"`
 }
@@ -60,6 +69,16 @@ func toCardResponse(c domain.Card) CardResponse {
 // метод только читает поля, а не модфицирует, поэтому по значению передаем ресивера
 func (r CreateCardRequest) toInput() service.CreateCardInput {
 	return service.CreateCardInput{
+		CategoryID:  r.CategoryID,
+		Description: r.Description,
+		Price:       r.Price,
+		PhotoURL:    r.PhotoURL,
+	}
+}
+
+// toInput переводит тело PATCH во входные данные сервиса, указатели передаются как есть
+func (r UpdateCardRequest) toInput() service.UpdateCardInput {
+	return service.UpdateCardInput{
 		CategoryID:  r.CategoryID,
 		Description: r.Description,
 		Price:       r.Price,

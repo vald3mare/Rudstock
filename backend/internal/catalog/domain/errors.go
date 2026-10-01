@@ -10,4 +10,5 @@ var (
 	ErrInvalidCategoryName = errors.New("invalid category name")
 	ErrCategoryExists      = errors.New("category already exists")
 	ErrInvalidPagination   = errors.New("invalid pagination")
+	ErrEmptyPatch          = errors.New("nothing to update")
 )

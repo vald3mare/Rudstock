@@ -111,3 +111,42 @@ func (r *CardRepo) Get(ctx context.Context, id uuid.UUID) (domain.Card, error) {
 
 	return c, nil
 }
+
+// Update применяет patch одним запросом и возвращает карточку после изменения.
+// Если карточки нет, возвращает domain.ErrCardNotFound, если новой категории нет, domain.ErrCategoryNotFound.
+func (r *CardRepo) Update(ctx context.Context, id uuid.UUID, patch domain.CardPatch) (domain.Card, error) {
+	// nil-указатель уходит в базу как NULL, а COALESCE(NULL, колонка) оставляет старое значение.
+	// Так не нужно собирать SET строкой под каждый набор полей.
+	// RETURNING отдаёт карточку целиком, второй SELECT не нужен.
+	const query = `
+		UPDATE cards
+		SET category_id = COALESCE($2, category_id),
+		    description = COALESCE($3, description),
+		    price       = COALESCE($4, price),
+		    photo_url   = COALESCE($5, photo_url)
+		WHERE id = $1
+		RETURNING id, category_id, description, price, photo_url, created_at`
+
+	var c domain.Card
+	err := r.pool.QueryRow(ctx, query,
+		id,
+		patch.CategoryID,
+		patch.Description,
+		patch.Price,
+		patch.PhotoURL,
+	).Scan(&c.ID, &c.CategoryID, &c.Description, &c.Price, &c.PhotoURL, &c.CreatedAt)
+	if err != nil {
+		// UPDATE без подходящей строки ничего не возвращает: карточки с таким id нет
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Card{}, domain.ErrCardNotFound
+		}
+		// 23503 foreign_key_violation: новой категории с таким id нет
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			return domain.Card{}, domain.ErrCategoryNotFound
+		}
+		return domain.Card{}, fmt.Errorf("update card: %w", err)
+	}
+
+	return c, nil
+}

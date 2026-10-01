@@ -10,10 +10,12 @@ import (
 	"github.com/vald3mare/Rudstock/backend/internal/platform/httpx"
 )
 
+// CategoryHandler HTTP-ручки категорий: разбирает запрос, зовёт сервис, пишет ответ.
 type CategoryHandler struct {
 	svc service.CategoryService
 }
 
+// NewCategoryHandler конструктор хендлера категорий.
 func NewCategoryHandler(s service.CategoryService) *CategoryHandler {
 	return &CategoryHandler{svc: s}
 }
@@ -26,9 +28,7 @@ func (h *CategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := h.svc.Create(r.Context(), service.CreateCategoryInput{
-		Name: req.Name,
-	})
+	id, err := h.svc.Create(r.Context(), req.toInput())
 	if err != nil {
 		httpx.WriteError(w, r, mapCategoryError(err))
 		return

@@ -10,10 +10,12 @@ import (
 	"github.com/vald3mare/Rudstock/backend/internal/platform/httpx"
 )
 
+// CardHandler HTTP-ручки карточек: разбирает запрос, зовёт сервис, пишет ответ.
 type CardHandler struct {
 	svc service.CardService
 }
 
+// NewCardHandler конструктор хендлера карточек.
 func NewCardHandler(s service.CardService) *CardHandler {
 	return &CardHandler{svc: s}
 }
@@ -86,6 +88,29 @@ func (h *CardHandler) Get(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, r, http.StatusOK, toCardResponse(card))
 }
 
+// PATCH /admin/cards/{id}
+func (h *CardHandler) Update(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.PathUUID(r, "id")
+	if err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+
+	var req UpdateCardRequest
+	if err := httpx.DecodeJSON(w, r, &req); err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+
+	card, err := h.svc.Update(r.Context(), id, req.toInput())
+	if err != nil {
+		httpx.WriteError(w, r, mapCardError(err))
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, toCardResponse(card))
+}
+
 // mapCardError переводит доменные ошибки в errs, чтобы httpx выбрал правильный код.
 // Всё неизвестное уходит как есть, WriteError ответит 500.
 func mapCardError(err error) error {
@@ -93,9 +118,11 @@ func mapCardError(err error) error {
 	case errors.Is(err, domain.ErrInvalidPrice):
 		return errs.InvalidInput("invalid-price", "Price must be greater than zero", err)
 	case errors.Is(err, domain.ErrInvalidCategoryID):
-		return errs.InvalidInput("invalid-category-id", "category_id is required", err)
+		return errs.InvalidInput("invalid-category-id", "category_id must be a positive integer", err)
 	case errors.Is(err, domain.ErrInvalidPagination):
 		return errs.InvalidInput("invalid-pagination", "page and limit must not be negative", err)
+	case errors.Is(err, domain.ErrEmptyPatch):
+		return errs.InvalidInput("empty-patch", "At least one field must be provided", err)
 	case errors.Is(err, domain.ErrCategoryNotFound):
 		return errs.NotFound("category-not-found", "Category not found", err)
 	case errors.Is(err, domain.ErrCardNotFound):

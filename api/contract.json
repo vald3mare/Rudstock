@@ -81,7 +81,13 @@
     },
     "GET /admin/cards": { "status": "todo", "query": ["как GET /cards", "status?"] },
     "GET /admin/cards/{id}": { "status": "todo", "errors": [404] },
-    "PATCH /admin/cards/{id}": { "status": "todo", "request": ["любые поля карточки", "status?"], "errors": [400, 404] },
+    "PATCH /admin/cards/{id}": {
+      "status": "done",
+      "request": { "category_id?": 1, "description?": "...", "price?": 12999, "photo_url?": "..." },
+      "response": "card (как GET /cards/{id})",
+      "errors": [400, 404],
+      "todo": ["status", "атрибуты"]
+    },
     "DELETE /admin/cards/{id}": { "status": "todo", "errors": [404, 409] },
     "POST /admin/cards/bulk": { "status": "todo", "request": ["ids", "action"], "errors": [400] },
     "PATCH /admin/categories/{id}": { "status": "todo", "request": ["name?", "sort?"], "errors": [404, 409] },

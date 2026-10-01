@@ -1,6 +1,9 @@
 package rest
 
-import "github.com/vald3mare/Rudstock/backend/internal/catalog/domain"
+import (
+	"github.com/vald3mare/Rudstock/backend/internal/catalog/domain"
+	"github.com/vald3mare/Rudstock/backend/internal/catalog/service"
+)
 
 type CreateCategoryRequest struct {
 	Name string `json:"name"`
@@ -24,4 +27,11 @@ func toCategoryResponses(categories []domain.Category) []CategoryResponse {
 		resp = append(resp, CategoryResponse{ID: c.ID, Name: c.Name})
 	}
 	return resp
+}
+
+// toInput переводит запрос по контракту во входные данные сервиса
+func (r CreateCategoryRequest) toInput() service.CreateCategoryInput {
+	return service.CreateCategoryInput{
+		Name: r.Name,
+	}
 }
