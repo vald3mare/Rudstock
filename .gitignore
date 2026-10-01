@@ -1,4 +1,4 @@
 .env
 test.txt
 struct.md
-bin
+bin/
