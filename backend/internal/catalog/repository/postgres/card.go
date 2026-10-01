@@ -24,17 +24,30 @@ func NewCardRepo(pool *pgxpool.Pool) *CardRepo {
 	}
 }
 
+// cardColumns и scanCard описывают карточку один раз для всех SELECT/RETURNING:
+// новое поле добавляется в двух местах рядом, а не в каждом запросе,
+// и порядок колонок не разойдётся с порядком Scan.
+const cardColumns = `id, category_id, title, description, price, photo_url, created_at`
+
+// scanCard читает строку с колонками cardColumns. pgx.Row подходит и для QueryRow, и для строк CollectRows.
+func scanCard(row pgx.Row) (domain.Card, error) {
+	var c domain.Card
+	err := row.Scan(&c.ID, &c.CategoryID, &c.Title, &c.Description, &c.Price, &c.PhotoURL, &c.CreatedAt)
+	return c, err
+}
+
 // вот и сама реализация создания карточки, именно от сюда мы и ходим в бд
 func (r *CardRepo) Create(ctx context.Context, card domain.Card) (uuid.UUID, error) {
 	// id и created_at не передаем, их проставляют DEFAULT'ы в таблице
 	const query = `
-		INSERT INTO cards (category_id, description, price, photo_url)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO cards (category_id, title, description, price, photo_url)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id`
 
 	var card_id uuid.UUID
 	err := r.pool.QueryRow(ctx, query,
 		card.CategoryID,
+		card.Title,
 		card.Description,
 		card.Price,
 		card.PhotoURL,
@@ -57,7 +70,7 @@ func (r *CardRepo) List(ctx context.Context, filter domain.CardFilter) ([]domain
 	// id во втором ключе сортировки: у карточек с одинаковым created_at
 	// порядок должен быть стабильным, иначе они будут прыгать между страницами.
 	const listQuery = `
-		SELECT id, category_id, description, price, photo_url, created_at
+		SELECT ` + cardColumns + `
 		FROM cards
 		WHERE ($1::bigint = 0 OR category_id = $1)
 		ORDER BY created_at DESC, id DESC
@@ -75,9 +88,7 @@ func (r *CardRepo) List(ctx context.Context, filter domain.CardFilter) ([]domain
 
 	// CollectRows сам закрывает rows и возвращает пустой срез, а не nil, если строк нет
 	cards, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (domain.Card, error) {
-		var c domain.Card
-		err := row.Scan(&c.ID, &c.CategoryID, &c.Description, &c.Price, &c.PhotoURL, &c.CreatedAt)
-		return c, err
+		return scanCard(row)
 	})
 	if err != nil {
 		return nil, 0, fmt.Errorf("scan cards: %w", err)
@@ -96,12 +107,11 @@ func (r *CardRepo) List(ctx context.Context, filter domain.CardFilter) ([]domain
 // Get читает карточку по id. Если строки нет, возвращает domain.ErrCardNotFound.
 func (r *CardRepo) Get(ctx context.Context, id uuid.UUID) (domain.Card, error) {
 	const query = `
-		SELECT id, category_id, description, price, photo_url, created_at
+		SELECT ` + cardColumns + `
 		FROM cards
 		WHERE id = $1`
 
-	var c domain.Card
-	err := r.pool.QueryRow(ctx, query, id).Scan(&c.ID, &c.CategoryID, &c.Description, &c.Price, &c.PhotoURL, &c.CreatedAt)
+	c, err := scanCard(r.pool.QueryRow(ctx, query, id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Card{}, domain.ErrCardNotFound
@@ -121,20 +131,21 @@ func (r *CardRepo) Update(ctx context.Context, id uuid.UUID, patch domain.CardPa
 	const query = `
 		UPDATE cards
 		SET category_id = COALESCE($2, category_id),
-		    description = COALESCE($3, description),
-		    price       = COALESCE($4, price),
-		    photo_url   = COALESCE($5, photo_url)
+		    title       = COALESCE($3, title),
+		    description = COALESCE($4, description),
+		    price       = COALESCE($5, price),
+		    photo_url   = COALESCE($6, photo_url)
 		WHERE id = $1
-		RETURNING id, category_id, description, price, photo_url, created_at`
+		RETURNING ` + cardColumns
 
-	var c domain.Card
-	err := r.pool.QueryRow(ctx, query,
+	c, err := scanCard(r.pool.QueryRow(ctx, query,
 		id,
 		patch.CategoryID,
+		patch.Title,
 		patch.Description,
 		patch.Price,
 		patch.PhotoURL,
-	).Scan(&c.ID, &c.CategoryID, &c.Description, &c.Price, &c.PhotoURL, &c.CreatedAt)
+	))
 	if err != nil {
 		// UPDATE без подходящей строки ничего не возвращает: карточки с таким id нет
 		if errors.Is(err, pgx.ErrNoRows) {

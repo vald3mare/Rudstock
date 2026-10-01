@@ -48,6 +48,29 @@ func (h *CategoryHandler) List(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, r, http.StatusOK, toCategoryResponses(categories))
 }
 
+// PATCH /admin/categories/{id}
+func (h *CategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.PathInt64(r, "id")
+	if err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+
+	var req UpdateCategoryRequest
+	if err := httpx.DecodeJSON(w, r, &req); err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+
+	category, err := h.svc.Update(r.Context(), id, req.toInput())
+	if err != nil {
+		httpx.WriteError(w, r, mapCategoryError(err))
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, toCategoryResponse(category))
+}
+
 // DELETE /admin/categories/{id}
 func (h *CategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := httpx.PathInt64(r, "id")
@@ -77,6 +100,8 @@ func mapCategoryError(err error) error {
 		return errs.Conflict("category-has-cards", "Category has cards, move or delete them first", err)
 	case errors.Is(err, domain.ErrCategoryNotFound):
 		return errs.NotFound("category-not-found", "Category not found", err)
+	case errors.Is(err, domain.ErrEmptyPatch):
+		return errs.InvalidInput("empty-patch", "At least one field must be provided", err)
 	default:
 		return err
 	}

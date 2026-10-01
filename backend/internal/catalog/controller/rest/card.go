@@ -134,6 +134,8 @@ func mapCardError(err error) error {
 	switch {
 	case errors.Is(err, domain.ErrInvalidPrice):
 		return errs.InvalidInput("invalid-price", "Price must be greater than zero", err)
+	case errors.Is(err, domain.ErrInvalidCardTitle):
+		return errs.InvalidInput("invalid-title", "Title must not be empty", err)
 	case errors.Is(err, domain.ErrInvalidCategoryID):
 		return errs.InvalidInput("invalid-category-id", "category_id must be a positive integer", err)
 	case errors.Is(err, domain.ErrInvalidPagination):

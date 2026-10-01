@@ -48,15 +48,17 @@ NAME="smoke-$(date +%s%N)"
 
 # id созданного, заполняются по ходу; пустые значит "не создали"
 CAT=""
+CAT2=""
 CARD=""
 CARD2=""
 
-# cleanup молча удаляет всё созданное: сначала карточки, потом категорию,
+# cleanup молча удаляет всё созданное: сначала карточки, потом категории,
 # иначе база не даст удалить категорию (409). Уже удалённое вернёт 404, это нормально.
 cleanup() {
   [[ -n $CARD ]] && curl -s -o /dev/null -X DELETE "$API/admin/cards/$CARD"
   [[ -n $CARD2 ]] && curl -s -o /dev/null -X DELETE "$API/admin/cards/$CARD2"
   [[ -n $CAT ]] && curl -s -o /dev/null -X DELETE "$API/admin/categories/$CAT"
+  [[ -n $CAT2 ]] && curl -s -o /dev/null -X DELETE "$API/admin/categories/$CAT2"
 }
 trap cleanup EXIT
 
@@ -76,15 +78,33 @@ check "unknown field" 400 invalid-json-body -X POST "$API/admin/categories" -H "
 echo "== GET /categories"
 check "list categories" 200 "$NAME" "$API/categories"
 
+echo "== PATCH /admin/categories/{id}"
+# вторая категория нужна, чтобы проверить 409 при переименовании в занятое имя
+check "create second category" 201 category_id -X POST "$API/admin/categories" -H "$J" -d "{\"name\":\"$NAME-2\"}"
+CAT2=$(sed -E 's/.*"category_id":([0-9]+).*/\1/' <<<"$LAST_BODY")
+check "rename" 200 "\"name\":\"$NAME-renamed\"" -X PATCH "$API/admin/categories/$CAT" -H "$J" -d "{\"name\":\"$NAME-renamed\"}"
+check "  renamed in list" 200 "$NAME-renamed" "$API/categories"
+# переименовываем обратно с пробелами: заодно проверяем trim, дальше скрипт ищет категорию по $NAME
+check "rename back (trim)" 200 "\"name\":\"$NAME\"" -X PATCH "$API/admin/categories/$CAT" -H "$J" -d "{\"name\":\"  $NAME  \"}"
+check "name taken" 409 category-exists -X PATCH "$API/admin/categories/$CAT" -H "$J" -d "{\"name\":\"$NAME-2\"}"
+check "empty name" 400 invalid-category-name -X PATCH "$API/admin/categories/$CAT" -H "$J" -d '{"name":"   "}'
+check "empty patch" 400 empty-patch -X PATCH "$API/admin/categories/$CAT" -H "$J" -d '{}'
+check "unknown field" 400 invalid-json-body -X PATCH "$API/admin/categories/$CAT" -H "$J" -d '{"foo":"x"}'
+check "not int" 400 invalid-path-param -X PATCH "$API/admin/categories/abc" -H "$J" -d '{"name":"x"}'
+check "not found" 404 category-not-found -X PATCH "$API/admin/categories/999999" -H "$J" -d "{\"name\":\"$NAME-ghost\"}"
+
 echo "== POST /admin/cards"
 check "create card" 201 card_id -X POST "$API/admin/cards" -H "$J" \
-  -d "{\"category_id\":$CAT,\"description\":\"Шина летняя 205/55 R16\",\"price\":14999,\"photo_url\":\"s3://photos/photo_1.jpg\"}"
+  -d "{\"category_id\":$CAT,\"title\":\"Michelin Primacy 4 205/55 R16\",\"description\":\"Шина летняя 205/55 R16\",\"price\":14999,\"photo_url\":\"s3://photos/photo_1.jpg\"}"
 CARD=$(sed -E 's/.*"card_id":"([^"]+)".*/\1/' <<<"$LAST_BODY")
-check "required fields only" 201 card_id -X POST "$API/admin/cards" -H "$J" -d "{\"category_id\":$CAT,\"price\":100}"
+check "required fields only" 201 card_id -X POST "$API/admin/cards" -H "$J" -d "{\"category_id\":$CAT,\"title\":\"Шина\",\"price\":100}"
 CARD2=$(sed -E 's/.*"card_id":"([^"]+)".*/\1/' <<<"$LAST_BODY")
-check "price 0" 400 invalid-price -X POST "$API/admin/cards" -H "$J" -d "{\"category_id\":$CAT,\"price\":0}"
-check "no category_id" 400 invalid-category-id -X POST "$API/admin/cards" -H "$J" -d '{"price":100}'
-check "unknown category" 404 category-not-found -X POST "$API/admin/cards" -H "$J" -d '{"category_id":999999,"price":100}'
+# в проверках ошибок остальные поля валидные: иначе сработает не та проверка, что тестируем
+check "no title" 400 invalid-title -X POST "$API/admin/cards" -H "$J" -d "{\"category_id\":$CAT,\"price\":100}"
+check "spaces title" 400 invalid-title -X POST "$API/admin/cards" -H "$J" -d "{\"category_id\":$CAT,\"title\":\"   \",\"price\":100}"
+check "price 0" 400 invalid-price -X POST "$API/admin/cards" -H "$J" -d "{\"category_id\":$CAT,\"title\":\"Шина\",\"price\":0}"
+check "no category_id" 400 invalid-category-id -X POST "$API/admin/cards" -H "$J" -d '{"title":"Шина","price":100}'
+check "unknown category" 404 category-not-found -X POST "$API/admin/cards" -H "$J" -d '{"category_id":999999,"title":"Шина","price":100}'
 
 echo "== GET /cards"
 # в свежей категории ровно 2 карточки, созданные выше
@@ -100,6 +120,7 @@ check "negative category" 400 invalid-category-id "$API/cards?category_id=-1"
 
 echo "== GET /cards/{id}"
 check "get card" 200 "\"id\":\"$CARD\"" "$API/cards/$CARD"
+check "  has title" 200 '"title":"Michelin Primacy 4 205/55 R16"' "$API/cards/$CARD"
 check "not uuid" 400 invalid-path-param "$API/cards/abc"
 check "not found" 404 card-not-found "$API/cards/00000000-0000-0000-0000-000000000000"
 
@@ -111,11 +132,13 @@ check "  photo untouched" 200 '"photo_url":"s3://photos/photo_1.jpg"' "$API/card
 check "clear photo" 200 '"photo_url":""' -X PATCH "$API/admin/cards/$CARD" -H "$J" -d '{"photo_url":""}'
 check "null keeps field" 200 '"description":"Распродажа"' -X PATCH "$API/admin/cards/$CARD" -H "$J" -d '{"description":null,"price":13999}'
 check "  price changed" 200 '"price":13999' "$API/cards/$CARD"
+check "title (trim)" 200 '"title":"Michelin Primacy 4"' -X PATCH "$API/admin/cards/$CARD" -H "$J" -d '{"title":"  Michelin Primacy 4  "}'
+check "empty title" 400 invalid-title -X PATCH "$API/admin/cards/$CARD" -H "$J" -d '{"title":"   "}'
 check "empty patch" 400 empty-patch -X PATCH "$API/admin/cards/$CARD" -H "$J" -d '{}'
 check "price 0" 400 invalid-price -X PATCH "$API/admin/cards/$CARD" -H "$J" -d '{"price":0}'
 check "category 0" 400 invalid-category-id -X PATCH "$API/admin/cards/$CARD" -H "$J" -d '{"category_id":0}'
 check "unknown category" 404 category-not-found -X PATCH "$API/admin/cards/$CARD" -H "$J" -d '{"category_id":999999}'
-check "unknown field" 400 invalid-json-body -X PATCH "$API/admin/cards/$CARD" -H "$J" -d '{"title":"x"}'
+check "unknown field" 400 invalid-json-body -X PATCH "$API/admin/cards/$CARD" -H "$J" -d '{"foo":"x"}'
 check "not uuid" 400 invalid-path-param -X PATCH "$API/admin/cards/abc" -H "$J" -d '{"price":100}'
 check "not found" 404 card-not-found -X PATCH "$API/admin/cards/00000000-0000-0000-0000-000000000000" -H "$J" -d '{"price":100}'
 
@@ -137,10 +160,11 @@ check "not uuid" 400 invalid-path-param -X DELETE "$API/admin/cards/abc"
 echo "== DELETE /admin/categories/{id}"
 check "delete empty category" 204 - -X DELETE "$API/admin/categories/$CAT"
 check "delete again" 404 category-not-found -X DELETE "$API/admin/categories/$CAT"
+check "delete second category" 204 - -X DELETE "$API/admin/categories/$CAT2"
 check "not int" 400 invalid-path-param -X DELETE "$API/admin/categories/abc"
 
 echo
-echo "category=$CAT card=$CARD card2=$CARD2"
+echo "category=$CAT category2=$CAT2 card=$CARD card2=$CARD2"
 echo "passed=$pass failed=$fail"
 
 [[ $fail -eq 0 ]]

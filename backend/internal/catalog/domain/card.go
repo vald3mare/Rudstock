@@ -10,6 +10,7 @@ import (
 type Card struct {
 	ID          uuid.UUID
 	CategoryID  int64
+	Title       string
 	Description string
 	Price       int64 // в копейках
 	PhotoURL    string
@@ -28,6 +29,7 @@ type CardFilter struct {
 // от "передали нулевое значение" (например, пустое описание).
 type CardPatch struct {
 	CategoryID  *int64
+	Title       *string
 	Description *string
 	Price       *int64 // в копейках
 	PhotoURL    *string

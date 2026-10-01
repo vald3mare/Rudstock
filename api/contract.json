@@ -12,6 +12,7 @@
           {
             "id": "uuid",
             "category_id": 1,
+            "title": "Michelin Primacy 4 205/55 R16",
             "description": "Шина летняя 205/55 R16",
             "price": 14999,
             "photo_url": "s3://photos/photo_1.jpg",
@@ -27,6 +28,7 @@
       "response": {
         "id": "uuid",
         "category_id": 1,
+        "title": "Michelin Primacy 4 205/55 R16",
         "description": "Шина летняя 205/55 R16",
         "price": 14999,
         "photo_url": "s3://photos/photo_1.jpg",
@@ -66,6 +68,7 @@
       "status": "done",
       "request": {
         "category_id": 1,
+        "title": "Michelin Primacy 4 205/55 R16",
         "description": "Шина летняя 205/55 R16",
         "price": 14999,
         "photo_url": "s3://photos/photo_1.jpg"
@@ -83,7 +86,7 @@
     "GET /admin/cards/{id}": { "status": "todo", "errors": [404] },
     "PATCH /admin/cards/{id}": {
       "status": "done",
-      "request": { "category_id?": 1, "description?": "...", "price?": 12999, "photo_url?": "..." },
+      "request": { "category_id?": 1, "title?": "...", "description?": "...", "price?": 12999, "photo_url?": "..." },
       "response": "card (как GET /cards/{id})",
       "errors": [400, 404],
       "todo": ["status", "атрибуты"]
@@ -95,7 +98,13 @@
       "todo": ["архивирование вместо удаления, 409 если есть в заказах"]
     },
     "POST /admin/cards/bulk": { "status": "todo", "request": ["ids", "action"], "errors": [400] },
-    "PATCH /admin/categories/{id}": { "status": "todo", "request": ["name?", "sort?"], "errors": [404, 409] },
+    "PATCH /admin/categories/{id}": {
+      "status": "done",
+      "request": { "name?": "Летние шины" },
+      "response": { "id": 1, "name": "Летние шины" },
+      "errors": [400, 404, 409],
+      "todo": ["sort"]
+    },
     "DELETE /admin/categories/{id}": {
       "status": "done",
       "response": "204 без тела",

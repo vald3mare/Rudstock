@@ -10,6 +10,7 @@ import (
 
 type CreateCardRequest struct {
 	CategoryID  int64  `json:"category_id"`
+	Title       string `json:"title"`
 	Description string `json:"description"`
 	Price       int64  `json:"price"`
 	PhotoURL    string `json:"photo_url"`
@@ -19,6 +20,7 @@ type CreateCardRequest struct {
 // Ограничение: явный null в JSON тоже станет nil, то есть "не менять поле".
 type UpdateCardRequest struct {
 	CategoryID  *int64  `json:"category_id"`
+	Title       *string `json:"title"`
 	Description *string `json:"description"`
 	Price       *int64  `json:"price"`
 	PhotoURL    *string `json:"photo_url"`
@@ -31,6 +33,7 @@ type CreateCardResponse struct {
 type CardResponse struct {
 	ID          uuid.UUID `json:"id"`
 	CategoryID  int64     `json:"category_id"`
+	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Price       int64     `json:"price"` // копейки
 	PhotoURL    string    `json:"photo_url"`
@@ -58,6 +61,7 @@ func toCardResponse(c domain.Card) CardResponse {
 	return CardResponse{
 		ID:          c.ID,
 		CategoryID:  c.CategoryID,
+		Title:       c.Title,
 		Description: c.Description,
 		Price:       c.Price,
 		PhotoURL:    c.PhotoURL,
@@ -70,6 +74,7 @@ func toCardResponse(c domain.Card) CardResponse {
 func (r CreateCardRequest) toInput() service.CreateCardInput {
 	return service.CreateCardInput{
 		CategoryID:  r.CategoryID,
+		Title:       r.Title,
 		Description: r.Description,
 		Price:       r.Price,
 		PhotoURL:    r.PhotoURL,
@@ -80,6 +85,7 @@ func (r CreateCardRequest) toInput() service.CreateCardInput {
 func (r UpdateCardRequest) toInput() service.UpdateCardInput {
 	return service.UpdateCardInput{
 		CategoryID:  r.CategoryID,
+		Title:       r.Title,
 		Description: r.Description,
 		Price:       r.Price,
 		PhotoURL:    r.PhotoURL,

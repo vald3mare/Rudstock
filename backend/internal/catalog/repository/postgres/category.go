@@ -70,6 +70,34 @@ func (r *CategoryRepo) List(ctx context.Context) ([]domain.Category, error) {
 	return categories, nil
 }
 
+// Update применяет patch одним запросом и возвращает категорию после изменения.
+// Если категории нет, возвращает domain.ErrCategoryNotFound, если имя занято, domain.ErrCategoryExists.
+func (r *CategoryRepo) Update(ctx context.Context, id int64, patch domain.CategoryPatch) (domain.Category, error) {
+	// тот же приём, что у карточки: nil уходит как NULL, COALESCE оставляет старое значение
+	const query = `
+		UPDATE categories
+		SET name = COALESCE($2, name)
+		WHERE id = $1
+		RETURNING id, name`
+
+	var c domain.Category
+	err := r.pool.QueryRow(ctx, query, id, patch.Name).Scan(&c.ID, &c.Name)
+	if err != nil {
+		// UPDATE без подходящей строки ничего не возвращает: категории с таким id нет
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Category{}, domain.ErrCategoryNotFound
+		}
+		// 23505 unique_violation: другая категория уже с таким name
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return domain.Category{}, domain.ErrCategoryExists
+		}
+		return domain.Category{}, fmt.Errorf("update category: %w", err)
+	}
+
+	return c, nil
+}
+
 // Delete удаляет категорию по id.
 // Если строки нет, возвращает domain.ErrCategoryNotFound, если в ней есть карточки, domain.ErrCategoryHasCards.
 func (r *CategoryRepo) Delete(ctx context.Context, id int64) error {

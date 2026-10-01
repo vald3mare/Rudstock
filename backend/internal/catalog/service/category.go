@@ -17,6 +17,11 @@ json {
 GET /categories (public) - список категорий
 -> 200 [{id, name}]
 
+PATCH /admin/categories/{id} (admin) - переименование категории
+json {
+	name: "Летние шины"
+} -> 200 {id, name} / error
+
 DELETE /admin/categories/{id} (admin) - удаление пустой категории
 -> 204 без тела / error
 */
@@ -24,6 +29,13 @@ DELETE /admin/categories/{id} (admin) - удаление пустой катег
 // CreateCategoryInput входные данные для создания категории.
 type CreateCategoryInput struct {
 	Name string // обязательно, не пустое, уникальное
+}
+
+// UpdateCategoryInput входные данные для частичного обновления категории.
+// nil означает "не менять поле"; хотя бы одно поле должно быть задано.
+// Поле пока одно, но указатель оставляем как у карточки: новые поля (sort и т.п.) добавятся без смены подхода.
+type UpdateCategoryInput struct {
+	Name *string // если задано: не пустое, уникальное
 }
 
 // CategoryService бизнес-операции над категориями.
@@ -34,6 +46,11 @@ type CategoryService interface {
 
 	// List возвращает все категории, отсортированные по имени.
 	List(ctx context.Context) ([]domain.Category, error)
+
+	// Update меняет переданные поля категории и возвращает её после изменения.
+	// Ошибки: domain.ErrEmptyPatch, domain.ErrInvalidCategoryName,
+	// domain.ErrCategoryNotFound, domain.ErrCategoryExists.
+	Update(ctx context.Context, id int64, in UpdateCategoryInput) (domain.Category, error)
 
 	// Delete удаляет категорию, если в ней нет карточек.
 	// Ошибки: domain.ErrCategoryNotFound, domain.ErrCategoryHasCards.
@@ -48,6 +65,10 @@ type CategoryRepo interface {
 
 	// List возвращает все категории, отсортированные по имени.
 	List(ctx context.Context) ([]domain.Category, error)
+
+	// Update применяет patch и возвращает категорию после изменения.
+	// Ошибки: domain.ErrCategoryNotFound, domain.ErrCategoryExists.
+	Update(ctx context.Context, id int64, patch domain.CategoryPatch) (domain.Category, error)
 
 	// Delete удаляет категорию.
 	// Ошибки: domain.ErrCategoryNotFound, domain.ErrCategoryHasCards.
@@ -94,6 +115,34 @@ func (s *categoryService) List(ctx context.Context) ([]domain.Category, error) {
 	}
 
 	return categories, nil
+}
+
+// Update проверяет только переданные поля, теми же правилами, что и Create,
+// и отдаёт patch в репозиторий.
+func (s *categoryService) Update(ctx context.Context, id int64, in UpdateCategoryInput) (domain.Category, error) {
+	// пустой PATCH почти всегда ошибка клиента, как и у карточки
+	if in.Name == nil {
+		return domain.Category{}, domain.ErrEmptyPatch
+	}
+
+	patch := domain.CategoryPatch{}
+
+	if in.Name != nil {
+		// та же нормализация, что в Create: иначе через PATCH можно было бы
+		// завести "Шины " рядом с "Шины"
+		name := strings.TrimSpace(*in.Name)
+		if name == "" {
+			return domain.Category{}, domain.ErrInvalidCategoryName
+		}
+		patch.Name = &name
+	}
+
+	category, err := s.categoryRepo.Update(ctx, id, patch)
+	if err != nil {
+		return domain.Category{}, fmt.Errorf("update category: %w", err)
+	}
+
+	return category, nil
 }
 
 // Delete передаёт удаление в репозиторий. Проверку "в категории есть карточки"

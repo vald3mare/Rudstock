@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/vald3mare/Rudstock/backend/internal/catalog/domain"
@@ -13,6 +14,7 @@ POST /admin/cards - создание карточки
 
 json {
     category_id: 1,
+    title: "Michelin Primacy 4 205/55 R16",
     description: "Шина летняя 205/55 R16",
     price: 14999,                         // копейки (149.99 ₽)
     photo_url: "s3://photos/photo_1.jpg"  // minio
@@ -23,7 +25,7 @@ query: category_id?, page?, limit?
 -> 200 {items: [...], total}
 
 GET /cards/{id} (public) - одна карточка
--> 200 {id, category_id, description, price, photo_url, created_at} / error
+-> 200 {id, category_id, title, description, price, photo_url, created_at} / error
 
 PATCH /admin/cards/{id} (admin) - частичное обновление карточки
 json {
@@ -44,9 +46,10 @@ const (
 // данные(CardInput) -> CardService.Create(input) -> cardService.Create(input) -> CardRepo.Create() -> postgres.CardRepo.Create()
 
 // CreateCardInput входные данные для создания карточки.
-// Контракт: category_id, description, price, photo_url.
+// Контракт: category_id, title, description, price, photo_url.
 type CreateCardInput struct {
 	CategoryID  int64  // обязательно, категория должна существовать
+	Title       string // обязательно, не пустое (пробелы по краям обрезаются)
 	Description string // необязательно
 	Price       int64  // обязательно, > 0, копейки
 	PhotoURL    string // необязательно, ссылка на объект в minio
@@ -63,6 +66,7 @@ type ListCardsInput struct {
 // nil означает "не менять поле"; хотя бы одно поле должно быть задано.
 type UpdateCardInput struct {
 	CategoryID  *int64  // если задано: > 0, категория должна существовать
+	Title       *string // если задано: не пустое (пробелы по краям обрезаются)
 	Description *string // если задано: любое, в том числе пустое
 	Price       *int64  // если задано: > 0, копейки
 	PhotoURL    *string // если задано: любое, в том числе пустое
@@ -71,7 +75,7 @@ type UpdateCardInput struct {
 // CardService бизнес-операции над карточками.
 type CardService interface {
 	// Create создаёт карточку и возвращает её id.
-	// Ошибки: domain.ErrInvalidCategoryID, domain.ErrInvalidPrice, domain.ErrCategoryNotFound.
+	// Ошибки: domain.ErrInvalidCategoryID, domain.ErrInvalidCardTitle, domain.ErrInvalidPrice, domain.ErrCategoryNotFound.
 	Create(ctx context.Context, in CreateCardInput) (uuid.UUID, error)
 
 	// List возвращает страницу карточек и общее число карточек под фильтром.
@@ -83,8 +87,8 @@ type CardService interface {
 	Get(ctx context.Context, id uuid.UUID) (domain.Card, error)
 
 	// Update меняет переданные поля карточки и возвращает её целиком после изменения.
-	// Ошибки: domain.ErrEmptyPatch, domain.ErrInvalidCategoryID, domain.ErrInvalidPrice,
-	// domain.ErrCardNotFound, domain.ErrCategoryNotFound.
+	// Ошибки: domain.ErrEmptyPatch, domain.ErrInvalidCategoryID, domain.ErrInvalidCardTitle,
+	// domain.ErrInvalidPrice, domain.ErrCardNotFound, domain.ErrCategoryNotFound.
 	Update(ctx context.Context, id uuid.UUID, in UpdateCardInput) (domain.Card, error)
 
 	// Delete удаляет карточку.
@@ -131,6 +135,12 @@ func (s *cardService) Create(ctx context.Context, in CreateCardInput) (uuid.UUID
 		return uuid.Nil, domain.ErrInvalidCategoryID
 	}
 
+	// обрезаем пробелы, как у имени категории: "   " не должно пройти как название
+	title := strings.TrimSpace(in.Title)
+	if title == "" {
+		return uuid.Nil, domain.ErrInvalidCardTitle
+	}
+
 	// цена в копейках, бесплатных и отрицательных карточек не бывает
 	if in.Price <= 0 {
 		return uuid.Nil, domain.ErrInvalidPrice
@@ -139,6 +149,7 @@ func (s *cardService) Create(ctx context.Context, in CreateCardInput) (uuid.UUID
 	// собираем доменную карточку из инпута, ID и CreatedAt проставляет хранилище
 	card := domain.Card{
 		CategoryID:  in.CategoryID,
+		Title:       title,
 		Description: in.Description,
 		Price:       in.Price,
 		PhotoURL:    in.PhotoURL,
@@ -202,12 +213,22 @@ func (s *cardService) Get(ctx context.Context, id uuid.UUID) (domain.Card, error
 func (s *cardService) Update(ctx context.Context, id uuid.UUID, in UpdateCardInput) (domain.Card, error) {
 	// пустой PATCH почти всегда ошибка клиента (опечатка в имени поля и т.п.),
 	// молча вернуть 200 без изменений значило бы её спрятать
-	if in.CategoryID == nil && in.Description == nil && in.Price == nil && in.PhotoURL == nil {
+	if in.CategoryID == nil && in.Title == nil && in.Description == nil && in.Price == nil && in.PhotoURL == nil {
 		return domain.Card{}, domain.ErrEmptyPatch
 	}
 
 	if in.CategoryID != nil && *in.CategoryID <= 0 {
 		return domain.Card{}, domain.ErrInvalidCategoryID
+	}
+
+	// title, если передан, нормализуем так же, как в Create, и кладём в patch уже обрезанным
+	var title *string
+	if in.Title != nil {
+		t := strings.TrimSpace(*in.Title)
+		if t == "" {
+			return domain.Card{}, domain.ErrInvalidCardTitle
+		}
+		title = &t
 	}
 
 	if in.Price != nil && *in.Price <= 0 {
@@ -216,6 +237,7 @@ func (s *cardService) Update(ctx context.Context, id uuid.UUID, in UpdateCardInp
 
 	patch := domain.CardPatch{
 		CategoryID:  in.CategoryID,
+		Title:       title,
 		Description: in.Description,
 		Price:       in.Price,
 		PhotoURL:    in.PhotoURL,

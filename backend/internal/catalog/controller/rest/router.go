@@ -15,6 +15,7 @@ func NewRouter(cards *CardHandler, categories *CategoryHandler) http.Handler {
 	mux.HandleFunc("PATCH /admin/cards/{id}", cards.Update)
 	mux.HandleFunc("DELETE /admin/cards/{id}", cards.Delete)
 	mux.HandleFunc("POST /admin/categories", categories.Create)
+	mux.HandleFunc("PATCH /admin/categories/{id}", categories.Update)
 	mux.HandleFunc("DELETE /admin/categories/{id}", categories.Delete)
 
 	return mux
