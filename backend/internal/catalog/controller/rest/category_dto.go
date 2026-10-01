@@ -1,6 +1,6 @@
 package rest
 
-import "github.com/vald3mare/Rudstock/internal/catalog/domain"
+import "github.com/vald3mare/Rudstock/backend/internal/catalog/domain"
 
 type CreateCategoryRequest struct {
 	Name string `json:"name"`

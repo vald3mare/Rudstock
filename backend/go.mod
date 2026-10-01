@@ -1,4 +1,4 @@
-module github.com/vald3mare/Rudstock
+module github.com/vald3mare/Rudstock/backend
 
 go 1.25.6
 

@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/vald3mare/Rudstock/internal/catalog/domain"
-	"github.com/vald3mare/Rudstock/internal/catalog/service"
+	"github.com/vald3mare/Rudstock/backend/internal/catalog/domain"
+	"github.com/vald3mare/Rudstock/backend/internal/catalog/service"
 )
 
 type CreateCardRequest struct {

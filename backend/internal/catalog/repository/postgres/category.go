@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/vald3mare/Rudstock/internal/catalog/domain"
+	"github.com/vald3mare/Rudstock/backend/internal/catalog/domain"
 )
 
 // CategoryRepo реализация service.CategoryRepo поверх Postgres.

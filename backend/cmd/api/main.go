@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/vald3mare/Rudstock/internal/catalog/controller/rest"
-	"github.com/vald3mare/Rudstock/internal/catalog/repository/postgres"
-	"github.com/vald3mare/Rudstock/internal/catalog/service"
-	"github.com/vald3mare/Rudstock/internal/platform/config"
-	"github.com/vald3mare/Rudstock/internal/platform/httpx"
+	"github.com/vald3mare/Rudstock/backend/internal/catalog/controller/rest"
+	"github.com/vald3mare/Rudstock/backend/internal/catalog/repository/postgres"
+	"github.com/vald3mare/Rudstock/backend/internal/catalog/service"
+	"github.com/vald3mare/Rudstock/backend/internal/platform/config"
+	"github.com/vald3mare/Rudstock/backend/internal/platform/httpx"
 )
 
 func Health(w http.ResponseWriter, r *http.Request) {

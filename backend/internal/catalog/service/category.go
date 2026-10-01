@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/vald3mare/Rudstock/internal/catalog/domain"
+	"github.com/vald3mare/Rudstock/backend/internal/catalog/domain"
 )
 
 /* РУЧКИ

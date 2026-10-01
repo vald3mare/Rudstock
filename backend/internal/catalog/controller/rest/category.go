@@ -4,10 +4,10 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/vald3mare/Rudstock/internal/catalog/domain"
-	"github.com/vald3mare/Rudstock/internal/catalog/service"
-	"github.com/vald3mare/Rudstock/internal/platform/errs"
-	"github.com/vald3mare/Rudstock/internal/platform/httpx"
+	"github.com/vald3mare/Rudstock/backend/internal/catalog/domain"
+	"github.com/vald3mare/Rudstock/backend/internal/catalog/service"
+	"github.com/vald3mare/Rudstock/backend/internal/platform/errs"
+	"github.com/vald3mare/Rudstock/backend/internal/platform/httpx"
 )
 
 type CategoryHandler struct {

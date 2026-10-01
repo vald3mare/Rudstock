@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/vald3mare/Rudstock/internal/platform/errs"
+	"github.com/vald3mare/Rudstock/backend/internal/platform/errs"
 )
 
 // DecodeJSON разбирает тело запроса в dst и возвращает ошибку приложения,
