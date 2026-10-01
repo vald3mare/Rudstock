@@ -1,22 +1,124 @@
 {
-    ПУБЛИЧНЫЕ РУЧКИ
-    /card/create - создание карточик
+  "public": {
+    "GET /categories": {
+      "status": "done",
+      "response": [{ "id": 1, "name": "Шины" }]
+    },
+    "GET /cards": {
+      "status": "done",
+      "query": { "category_id": 0, "page": 1, "limit": 20 },
+      "response": {
+        "items": [
+          {
+            "id": "uuid",
+            "category_id": 1,
+            "description": "Шина летняя 205/55 R16",
+            "price": 14999,
+            "photo_url": "s3://photos/photo_1.jpg",
+            "created_at": "2026-09-30T12:00:00Z"
+          }
+        ],
+        "total": 1
+      },
+      "errors": [400]
+    },
+    "GET /cards/{id}": { "status": "todo", "response": "card", "errors": [400, 404] },
+    "GET /brands": { "status": "todo", "query": ["category_id?"] },
+    "GET /filters": { "status": "todo", "query": ["category_id"], "errors": [404] },
+    "GET /fitment/vehicles": { "status": "todo", "query": ["make?", "model?", "year?"] },
+    "GET /fitment/sizes": { "status": "todo", "query": ["vehicle_id"], "errors": [404] }
+  },
 
-    POST json {
-        category_id: 1,
-        description: "",
-        price: 100.00,
-        photo_url: "s3://photo_1" (minio)
-    } -> card_id / error
+  "checkout": {
+    "POST /cart/check": { "status": "todo", "request": [{ "card_id": "uuid", "qty": 4 }], "errors": [404] },
+    "GET /checkout/options": { "status": "todo" },
+    "POST /orders": {
+      "status": "todo",
+      "request": ["contacts", "address", "delivery", "payment", "items: [{card_id, qty}]"],
+      "response": ["order_id", "number", "total", "payment_url?"],
+      "errors": [404, 409]
+    },
+    "GET /orders/{number}": { "status": "todo", "query": ["phone"], "errors": [404] },
+    "POST /payments/webhook": { "status": "todo", "errors": [400] },
+    "POST /callbacks": { "status": "todo", "request": ["name", "phone", "comment?", "card_id?"], "errors": [429] }
+  },
 
-    /category/create - использует фронт когда человек сам хочет создать категорию
+  "auth": {
+    "POST /auth/login": { "status": "todo", "request": ["login", "password"], "response": ["access", "refresh"], "errors": [401, 429] },
+    "POST /auth/refresh": { "status": "todo", "request": ["refresh"], "errors": [401] },
+    "POST /auth/logout": { "status": "todo", "request": ["refresh"] },
+    "GET /auth/me": { "status": "todo", "response": ["id", "name", "role"], "errors": [401] }
+  },
 
-    ПРИВАТНЫЕ РУЧКИ
-    /selectyres/card/create -> прошлись по файлу -> достали товары
+  "admin_catalog": {
+    "POST /admin/cards": {
+      "status": "done",
+      "request": {
+        "category_id": 1,
+        "description": "Шина летняя 205/55 R16",
+        "price": 14999,
+        "photo_url": "s3://photos/photo_1.jpg"
+      },
+      "response": { "card_id": "uuid" },
+      "errors": [400, 404]
+    },
+    "POST /admin/categories": {
+      "status": "done",
+      "request": { "name": "Шины" },
+      "response": { "category_id": 1 },
+      "errors": [400, 409]
+    },
+    "GET /admin/cards": { "status": "todo", "query": ["как GET /cards", "status?"] },
+    "GET /admin/cards/{id}": { "status": "todo", "errors": [404] },
+    "PATCH /admin/cards/{id}": { "status": "todo", "request": ["любые поля карточки", "status?"], "errors": [400, 404] },
+    "DELETE /admin/cards/{id}": { "status": "todo", "errors": [404, 409] },
+    "POST /admin/cards/bulk": { "status": "todo", "request": ["ids", "action"], "errors": [400] },
+    "PATCH /admin/categories/{id}": { "status": "todo", "request": ["name?", "sort?"], "errors": [404, 409] },
+    "DELETE /admin/categories/{id}": { "status": "todo", "errors": [404, 409] },
+    "GET /admin/categories/{id}/attributes": { "status": "todo", "errors": [404] },
+    "POST /admin/categories/{id}/attributes": { "status": "todo", "request": ["name", "type", "unit?", "filterable"], "errors": [404, 409] },
+    "PATCH /admin/attributes/{id}": { "status": "todo", "errors": [404, 409] },
+    "DELETE /admin/attributes/{id}": { "status": "todo", "errors": [404, 409] },
+    "POST /admin/uploads": { "status": "todo", "request": ["content_type", "size"], "response": ["upload_url", "object_key"], "errors": [400] },
+    "GET /admin/brands": { "status": "todo" },
+    "POST /admin/brands": { "status": "todo", "request": ["name", "logo_url?"], "errors": [409] },
+    "PATCH /admin/brands/{id}": { "status": "todo", "errors": [404, 409] },
+    "DELETE /admin/brands/{id}": { "status": "todo", "errors": [404, 409] }
+  },
 
-    POST json {
-        category_id: 1, -> "шины"
-        description: "большая строка"
-        price: 100.00 // цена под наценку
-    }
+  "admin_stock": {
+    "GET /admin/warehouses": { "status": "todo" },
+    "POST /admin/warehouses": { "status": "todo", "request": ["name", "address"], "errors": [409] },
+    "PATCH /admin/warehouses/{id}": { "status": "todo", "errors": [404, 409] },
+    "GET /admin/stock": { "status": "todo", "query": ["card_id?", "warehouse_id?", "low_only?"] },
+    "POST /admin/stock/receipts": { "status": "todo", "request": ["warehouse_id", "supplier_id?", "items: [{card_id, qty, cost}]"], "errors": [404] },
+    "POST /admin/stock/write-offs": { "status": "todo", "request": ["warehouse_id", "reason", "items: [{card_id, qty}]"], "errors": [404, 409] },
+    "POST /admin/stock/transfers": { "status": "todo", "request": ["from", "to", "items: [{card_id, qty}]"], "errors": [404, 409] },
+    "GET /admin/stock/movements": { "status": "todo", "query": ["card_id?", "warehouse_id?", "type?", "from?", "to?"] },
+    "GET /admin/suppliers": { "status": "todo" },
+    "POST /admin/suppliers": { "status": "todo", "request": ["name", "contacts", "markup?"], "errors": [409] },
+    "PATCH /admin/suppliers/{id}": { "status": "todo", "errors": [404, 409] },
+    "POST /admin/imports": { "status": "todo", "request": ["supplier_id", "file"], "errors": [400, 404] },
+    "GET /admin/imports/{id}": { "status": "todo", "errors": [404] }
+  },
+
+  "admin_orders": {
+    "GET /admin/orders": { "status": "todo", "query": ["status?", "from?", "to?", "q?"] },
+    "GET /admin/orders/{id}": { "status": "todo", "errors": [404] },
+    "PATCH /admin/orders/{id}": { "status": "todo", "request": ["status?", "items?", "comment?", "delivery?"], "errors": [404, 409] },
+    "GET /admin/callbacks": { "status": "todo" },
+    "PATCH /admin/callbacks/{id}": { "status": "todo", "request": ["status?", "comment?"], "errors": [404] }
+  },
+
+  "admin_settings": {
+    "GET /admin/settings": { "status": "todo" },
+    "PUT /admin/settings": { "status": "todo", "errors": [400] },
+    "GET /admin/users": { "status": "todo" },
+    "POST /admin/users": { "status": "todo", "request": ["login", "name", "role", "password"], "errors": [409] },
+    "PATCH /admin/users/{id}": { "status": "todo", "errors": [404, 409] },
+    "DELETE /admin/users/{id}": { "status": "todo", "errors": [404] },
+    "GET /admin/reports/sales": { "status": "todo", "query": ["from", "to", "group_by"], "errors": [400] },
+    "GET /admin/reports/stock": { "status": "todo", "query": ["warehouse_id?"] },
+    "GET /admin/audit": { "status": "todo", "query": ["user_id?", "entity?", "from?", "to?"] }
+  }
 }
