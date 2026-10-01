@@ -48,6 +48,23 @@ func (h *CategoryHandler) List(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, r, http.StatusOK, toCategoryResponses(categories))
 }
 
+// DELETE /admin/categories/{id}
+func (h *CategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.PathInt64(r, "id")
+	if err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+
+	if err := h.svc.Delete(r.Context(), id); err != nil {
+		httpx.WriteError(w, r, mapCategoryError(err))
+		return
+	}
+
+	// 204 без тела: удалённую категорию возвращать незачем
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // mapCategoryError переводит доменные ошибки в errs, чтобы httpx выбрал правильный код.
 // Всё неизвестное уходит как есть, WriteError ответит 500.
 func mapCategoryError(err error) error {
@@ -56,6 +73,10 @@ func mapCategoryError(err error) error {
 		return errs.InvalidInput("invalid-category-name", "Category name must not be empty", err)
 	case errors.Is(err, domain.ErrCategoryExists):
 		return errs.Conflict("category-exists", "Category with this name already exists", err)
+	case errors.Is(err, domain.ErrCategoryHasCards):
+		return errs.Conflict("category-has-cards", "Category has cards, move or delete them first", err)
+	case errors.Is(err, domain.ErrCategoryNotFound):
+		return errs.NotFound("category-not-found", "Category not found", err)
 	default:
 		return err
 	}

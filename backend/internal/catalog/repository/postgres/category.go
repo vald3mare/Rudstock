@@ -69,3 +69,26 @@ func (r *CategoryRepo) List(ctx context.Context) ([]domain.Category, error) {
 
 	return categories, nil
 }
+
+// Delete удаляет категорию по id.
+// Если строки нет, возвращает domain.ErrCategoryNotFound, если в ней есть карточки, domain.ErrCategoryHasCards.
+func (r *CategoryRepo) Delete(ctx context.Context, id int64) error {
+	const query = `
+		DELETE FROM categories
+		WHERE id = $1`
+
+	tag, err := r.pool.Exec(ctx, query, id)
+	if err != nil {
+		// 23503 foreign_key_violation: на категорию ссылаются карточки (cards.category_id)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			return domain.ErrCategoryHasCards
+		}
+		return fmt.Errorf("delete category: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrCategoryNotFound
+	}
+
+	return nil
+}

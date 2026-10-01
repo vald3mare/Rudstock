@@ -88,10 +88,19 @@
       "errors": [400, 404],
       "todo": ["status", "атрибуты"]
     },
-    "DELETE /admin/cards/{id}": { "status": "todo", "errors": [404, 409] },
+    "DELETE /admin/cards/{id}": {
+      "status": "done",
+      "response": "204 без тела",
+      "errors": [400, 404],
+      "todo": ["архивирование вместо удаления, 409 если есть в заказах"]
+    },
     "POST /admin/cards/bulk": { "status": "todo", "request": ["ids", "action"], "errors": [400] },
     "PATCH /admin/categories/{id}": { "status": "todo", "request": ["name?", "sort?"], "errors": [404, 409] },
-    "DELETE /admin/categories/{id}": { "status": "todo", "errors": [404, 409] },
+    "DELETE /admin/categories/{id}": {
+      "status": "done",
+      "response": "204 без тела",
+      "errors": [400, 404, 409]
+    },
     "GET /admin/categories/{id}/attributes": { "status": "todo", "errors": [404] },
     "POST /admin/categories/{id}/attributes": { "status": "todo", "request": ["name", "type", "unit?", "filterable"], "errors": [404, 409] },
     "PATCH /admin/attributes/{id}": { "status": "todo", "errors": [404, 409] },

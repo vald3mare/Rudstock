@@ -16,6 +16,9 @@ json {
 
 GET /categories (public) - список категорий
 -> 200 [{id, name}]
+
+DELETE /admin/categories/{id} (admin) - удаление пустой категории
+-> 204 без тела / error
 */
 
 // CreateCategoryInput входные данные для создания категории.
@@ -31,6 +34,10 @@ type CategoryService interface {
 
 	// List возвращает все категории, отсортированные по имени.
 	List(ctx context.Context) ([]domain.Category, error)
+
+	// Delete удаляет категорию, если в ней нет карточек.
+	// Ошибки: domain.ErrCategoryNotFound, domain.ErrCategoryHasCards.
+	Delete(ctx context.Context, id int64) error
 }
 
 // CategoryRepo что сервису нужно от хранилища.
@@ -41,6 +48,10 @@ type CategoryRepo interface {
 
 	// List возвращает все категории, отсортированные по имени.
 	List(ctx context.Context) ([]domain.Category, error)
+
+	// Delete удаляет категорию.
+	// Ошибки: domain.ErrCategoryNotFound, domain.ErrCategoryHasCards.
+	Delete(ctx context.Context, id int64) error
 }
 
 type categoryService struct {
@@ -83,4 +94,15 @@ func (s *categoryService) List(ctx context.Context) ([]domain.Category, error) {
 	}
 
 	return categories, nil
+}
+
+// Delete передаёт удаление в репозиторий. Проверку "в категории есть карточки"
+// делает база внешним ключом: отдельный SELECT count перед удалением
+// мог бы устареть, пока между ними кто-то создаёт карточку.
+func (s *categoryService) Delete(ctx context.Context, id int64) error {
+	if err := s.categoryRepo.Delete(ctx, id); err != nil {
+		return fmt.Errorf("delete category: %w", err)
+	}
+
+	return nil
 }

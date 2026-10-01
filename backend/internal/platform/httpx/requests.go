@@ -62,6 +62,17 @@ func QueryInt64(r *http.Request, key string) (int64, error) {
 	return v, nil
 }
 
+// PathInt64 читает параметр пути ({key} в шаблоне маршрута) и разбирает его как целое число.
+// Не число (например /admin/categories/abc) это ошибка клиента, 400.
+func PathInt64(r *http.Request, key string) (int64, error) {
+	v, err := strconv.ParseInt(r.PathValue(key), 10, 64)
+	if err != nil {
+		return 0, errs.InvalidInput("invalid-path-param", "Path parameter "+key+" must be an integer", err)
+	}
+
+	return v, nil
+}
+
 // PathUUID читает параметр пути ({key} в шаблоне маршрута) и разбирает его как UUID.
 // Не UUID (например /cards/abc) это ошибка клиента, 400.
 func PathUUID(r *http.Request, key string) (uuid.UUID, error) {

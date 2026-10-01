@@ -150,3 +150,22 @@ func (r *CardRepo) Update(ctx context.Context, id uuid.UUID, patch domain.CardPa
 
 	return c, nil
 }
+
+// Delete удаляет карточку по id. Если строки нет, возвращает domain.ErrCardNotFound.
+func (r *CardRepo) Delete(ctx context.Context, id uuid.UUID) error {
+	const query = `
+		DELETE FROM cards
+		WHERE id = $1`
+
+	// Exec, а не QueryRow: DELETE без RETURNING строк не возвращает,
+	// поэтому "не найдено" узнаём по числу затронутых строк, а не по ErrNoRows
+	tag, err := r.pool.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("delete card: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrCardNotFound
+	}
+
+	return nil
+}

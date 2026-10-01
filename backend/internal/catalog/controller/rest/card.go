@@ -111,6 +111,23 @@ func (h *CardHandler) Update(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, r, http.StatusOK, toCardResponse(card))
 }
 
+// DELETE /admin/cards/{id}
+func (h *CardHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.PathUUID(r, "id")
+	if err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+
+	if err := h.svc.Delete(r.Context(), id); err != nil {
+		httpx.WriteError(w, r, mapCardError(err))
+		return
+	}
+
+	// 204 без тела: удалённую карточку возвращать незачем
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // mapCardError переводит доменные ошибки в errs, чтобы httpx выбрал правильный код.
 // Всё неизвестное уходит как есть, WriteError ответит 500.
 func mapCardError(err error) error {

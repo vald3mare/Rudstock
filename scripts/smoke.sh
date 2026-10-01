@@ -3,7 +3,9 @@
 # и подстроку тела (обычно slug ошибки), в конце печатает итог.
 #
 # Нужен запущенный сервер с базой после миграций. Создаёт свою категорию
-# smoke-<timestamp> и две карточки в ней, после себя их не удаляет.
+# smoke-<timestamp> и две карточки в ней. В конце удаляет их через DELETE-ручки
+# (это заодно и проверка удаления), а cleanup в trap добирает остатки,
+# если скрипт прервали (Ctrl+C) раньше.
 #
 # Запуск:
 #   scripts/smoke.sh                     # сервер на localhost:8081
@@ -44,6 +46,20 @@ check() {
 # уникальное имя: иначе повторный запуск упрётся в 409 на создании категории
 NAME="smoke-$(date +%s%N)"
 
+# id созданного, заполняются по ходу; пустые значит "не создали"
+CAT=""
+CARD=""
+CARD2=""
+
+# cleanup молча удаляет всё созданное: сначала карточки, потом категорию,
+# иначе база не даст удалить категорию (409). Уже удалённое вернёт 404, это нормально.
+cleanup() {
+  [[ -n $CARD ]] && curl -s -o /dev/null -X DELETE "$API/admin/cards/$CARD"
+  [[ -n $CARD2 ]] && curl -s -o /dev/null -X DELETE "$API/admin/cards/$CARD2"
+  [[ -n $CAT ]] && curl -s -o /dev/null -X DELETE "$API/admin/categories/$CAT"
+}
+trap cleanup EXIT
+
 echo "== health ($API)"
 check "health" 200 '"ok"' "$API/health"
 
@@ -65,6 +81,7 @@ check "create card" 201 card_id -X POST "$API/admin/cards" -H "$J" \
   -d "{\"category_id\":$CAT,\"description\":\"Шина летняя 205/55 R16\",\"price\":14999,\"photo_url\":\"s3://photos/photo_1.jpg\"}"
 CARD=$(sed -E 's/.*"card_id":"([^"]+)".*/\1/' <<<"$LAST_BODY")
 check "required fields only" 201 card_id -X POST "$API/admin/cards" -H "$J" -d "{\"category_id\":$CAT,\"price\":100}"
+CARD2=$(sed -E 's/.*"card_id":"([^"]+)".*/\1/' <<<"$LAST_BODY")
 check "price 0" 400 invalid-price -X POST "$API/admin/cards" -H "$J" -d "{\"category_id\":$CAT,\"price\":0}"
 check "no category_id" 400 invalid-category-id -X POST "$API/admin/cards" -H "$J" -d '{"price":100}'
 check "unknown category" 404 category-not-found -X POST "$API/admin/cards" -H "$J" -d '{"category_id":999999,"price":100}'
@@ -103,10 +120,27 @@ check "not uuid" 400 invalid-path-param -X PATCH "$API/admin/cards/abc" -H "$J" 
 check "not found" 404 card-not-found -X PATCH "$API/admin/cards/00000000-0000-0000-0000-000000000000" -H "$J" -d '{"price":100}'
 
 echo "== routing"
-check "wrong method" 405 - -X DELETE "$API/cards/$CARD"
+check "wrong method" 405 - -X PUT "$API/cards/$CARD"
+
+# удаление в конце: это и проверка DELETE-ручек, и уборка за собой
+echo "== DELETE /admin/categories/{id} (with cards)"
+check "category has cards" 409 category-has-cards -X DELETE "$API/admin/categories/$CAT"
+check "  category still exists" 200 "$NAME" "$API/categories"
+
+echo "== DELETE /admin/cards/{id}"
+check "delete card" 204 - -X DELETE "$API/admin/cards/$CARD"
+check "  card gone" 404 card-not-found "$API/cards/$CARD"
+check "delete again" 404 card-not-found -X DELETE "$API/admin/cards/$CARD"
+check "delete second card" 204 - -X DELETE "$API/admin/cards/$CARD2"
+check "not uuid" 400 invalid-path-param -X DELETE "$API/admin/cards/abc"
+
+echo "== DELETE /admin/categories/{id}"
+check "delete empty category" 204 - -X DELETE "$API/admin/categories/$CAT"
+check "delete again" 404 category-not-found -X DELETE "$API/admin/categories/$CAT"
+check "not int" 400 invalid-path-param -X DELETE "$API/admin/categories/abc"
 
 echo
-echo "category=$CAT card=$CARD"
+echo "category=$CAT card=$CARD card2=$CARD2"
 echo "passed=$pass failed=$fail"
 
 [[ $fail -eq 0 ]]

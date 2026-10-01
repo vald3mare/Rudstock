@@ -29,6 +29,9 @@ PATCH /admin/cards/{id} (admin) - частичное обновление кар
 json {
     price: 12999   // любое подмножество полей из POST, хотя бы одно
 } -> 200 карточка целиком / error
+
+DELETE /admin/cards/{id} (admin) - удаление карточки
+-> 204 без тела / error
 */
 
 // Пагинация: 0 означает значение по умолчанию, limit больше максимума срезается до него
@@ -83,6 +86,10 @@ type CardService interface {
 	// Ошибки: domain.ErrEmptyPatch, domain.ErrInvalidCategoryID, domain.ErrInvalidPrice,
 	// domain.ErrCardNotFound, domain.ErrCategoryNotFound.
 	Update(ctx context.Context, id uuid.UUID, in UpdateCardInput) (domain.Card, error)
+
+	// Delete удаляет карточку.
+	// Ошибки: domain.ErrCardNotFound.
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 // CardRepo что сервису нужно от хранилища (тут описываем требование)
@@ -101,6 +108,10 @@ type CardRepo interface {
 	// Update применяет patch и возвращает карточку после изменения.
 	// Ошибки: domain.ErrCardNotFound, domain.ErrCategoryNotFound.
 	Update(ctx context.Context, id uuid.UUID, patch domain.CardPatch) (domain.Card, error)
+
+	// Delete удаляет карточку.
+	// Ошибки: domain.ErrCardNotFound.
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 // закрытый экземпляр с начинкой
@@ -216,4 +227,14 @@ func (s *cardService) Update(ctx context.Context, id uuid.UUID, in UpdateCardInp
 	}
 
 	return card, nil
+}
+
+// Delete передаёт удаление в репозиторий.
+// Пока удаляем физически: заказов ещё нет, архивировать (status) будем, когда появятся.
+func (s *cardService) Delete(ctx context.Context, id uuid.UUID) error {
+	if err := s.cardRepo.Delete(ctx, id); err != nil {
+		return fmt.Errorf("delete card: %w", err)
+	}
+
+	return nil
 }
