@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/vald3mare/Rudstock/internal/catalog/domain"
+	"github.com/vald3mare/Rudstock/internal/catalog/service"
 )
 
 type CreateCardRequest struct {
@@ -47,4 +48,15 @@ func toCardResponses(cards []domain.Card) []CardResponse {
 		})
 	}
 	return resp
+}
+
+// toInput переводит запрос по контракту во входные данные сервиса
+// метод только читает поля, а не модфицирует, поэтому по значению передаем ресивера
+func (r CreateCardRequest) toInput() service.CreateCardInput {
+	return service.CreateCardInput{
+		CategoryID:  r.CategoryID,
+		Description: r.Description,
+		Price:       r.Price,
+		PhotoURL:    r.PhotoURL,
+	}
 }

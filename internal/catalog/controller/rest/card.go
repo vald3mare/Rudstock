@@ -26,12 +26,7 @@ func (h *CardHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := h.svc.Create(r.Context(), service.CreateCardInput{
-		CategoryID:  req.CategoryID,
-		Description: req.Description,
-		Price:       req.Price,
-		PhotoURL:    req.PhotoURL,
-	})
+	id, err := h.svc.Create(r.Context(), req.toInput())
 	if err != nil {
 		httpx.WriteError(w, r, mapCardError(err))
 		return
