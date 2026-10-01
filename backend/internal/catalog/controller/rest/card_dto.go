@@ -38,16 +38,22 @@ func toCardResponses(cards []domain.Card) []CardResponse {
 	// make, а не var: пустой список должен уйти как [], а не null
 	resp := make([]CardResponse, 0, len(cards))
 	for _, c := range cards {
-		resp = append(resp, CardResponse{
-			ID:          c.ID,
-			CategoryID:  c.CategoryID,
-			Description: c.Description,
-			Price:       c.Price,
-			PhotoURL:    c.PhotoURL,
-			CreatedAt:   c.CreatedAt,
-		})
+		resp = append(resp, toCardResponse(c))
 	}
 	return resp
+}
+
+// toCardResponse отделяет JSON-формат от доменной модели для одной карточки.
+// Единственное место маппинга полей: toCardResponses вызывает её для каждого элемента.
+func toCardResponse(c domain.Card) CardResponse {
+	return CardResponse{
+		ID:          c.ID,
+		CategoryID:  c.CategoryID,
+		Description: c.Description,
+		Price:       c.Price,
+		PhotoURL:    c.PhotoURL,
+		CreatedAt:   c.CreatedAt,
+	}
 }
 
 // toInput переводит запрос по контракту во входные данные сервиса

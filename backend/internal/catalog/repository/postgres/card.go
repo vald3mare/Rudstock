@@ -92,3 +92,22 @@ func (r *CardRepo) List(ctx context.Context, filter domain.CardFilter) ([]domain
 
 	return cards, total, nil
 }
+
+// Get читает карточку по id. Если строки нет, возвращает domain.ErrCardNotFound.
+func (r *CardRepo) Get(ctx context.Context, id uuid.UUID) (domain.Card, error) {
+	const query = `
+		SELECT id, category_id, description, price, photo_url, created_at
+		FROM cards
+		WHERE id = $1`
+
+	var c domain.Card
+	err := r.pool.QueryRow(ctx, query, id).Scan(&c.ID, &c.CategoryID, &c.Description, &c.Price, &c.PhotoURL, &c.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Card{}, domain.ErrCardNotFound
+		}
+		return domain.Card{}, fmt.Errorf("select card: %w", err)
+	}
+
+	return c, nil
+}

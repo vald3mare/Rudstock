@@ -57,6 +57,10 @@ type CardService interface {
 	// List возвращает страницу карточек и общее число карточек под фильтром.
 	// Ошибки: domain.ErrInvalidCategoryID, domain.ErrInvalidPagination.
 	List(ctx context.Context, in ListCardsInput) ([]domain.Card, int64, error)
+
+	// Get возвращает карточку по её идентификатору.
+	// Ошибки: domain.ErrCardNotFound.
+	Get(ctx context.Context, id uuid.UUID) (domain.Card, error)
 }
 
 // CardRepo что сервису нужно от хранилища (тут описываем требование)
@@ -67,6 +71,10 @@ type CardRepo interface {
 
 	// List возвращает карточки под фильтром (новые первыми) и их общее число без учёта limit/offset.
 	List(ctx context.Context, filter domain.CardFilter) ([]domain.Card, int64, error)
+
+	// Get возвращает карточку по её идентификатору.
+	// Ошибки: domain.ErrCardNotFound.
+	Get(ctx context.Context, id uuid.UUID) (domain.Card, error)
 }
 
 // закрытый экземпляр с начинкой
@@ -139,4 +147,15 @@ func (s *cardService) List(ctx context.Context, in ListCardsInput) ([]domain.Car
 	}
 
 	return cards, total, nil
+}
+
+// Get передаёт поиск в репозиторий. Отдельной проверки на uuid.Nil нет:
+// база его не найдёт, и клиент получит 404, как и для любого несуществующего id.
+func (s *cardService) Get(ctx context.Context, id uuid.UUID) (domain.Card, error) {
+	card, err := s.cardRepo.Get(ctx, id)
+	if err != nil {
+		return domain.Card{}, fmt.Errorf("get card: %w", err)
+	}
+
+	return card, nil
 }

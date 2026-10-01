@@ -22,7 +22,18 @@
       },
       "errors": [400]
     },
-    "GET /cards/{id}": { "status": "todo", "response": "card", "errors": [400, 404] },
+    "GET /cards/{id}": {
+      "status": "done",
+      "response": {
+        "id": "uuid",
+        "category_id": 1,
+        "description": "Шина летняя 205/55 R16",
+        "price": 14999,
+        "photo_url": "s3://photos/photo_1.jpg",
+        "created_at": "2026-09-30T12:00:00Z"
+      },
+      "errors": [400, 404]
+    },
     "GET /brands": { "status": "todo", "query": ["category_id?"] },
     "GET /filters": { "status": "todo", "query": ["category_id"], "errors": [404] },
     "GET /fitment/vehicles": { "status": "todo", "query": ["make?", "model?", "year?"] },

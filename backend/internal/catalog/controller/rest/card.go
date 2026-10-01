@@ -69,6 +69,23 @@ func (h *CardHandler) List(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GET /cards/{id}
+func (h *CardHandler) Get(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.PathUUID(r, "id")
+	if err != nil {
+		httpx.WriteError(w, r, err)
+		return
+	}
+
+	card, err := h.svc.Get(r.Context(), id)
+	if err != nil {
+		httpx.WriteError(w, r, mapCardError(err))
+		return
+	}
+
+	httpx.WriteJSON(w, r, http.StatusOK, toCardResponse(card))
+}
+
 // mapCardError переводит доменные ошибки в errs, чтобы httpx выбрал правильный код.
 // Всё неизвестное уходит как есть, WriteError ответит 500.
 func mapCardError(err error) error {
@@ -81,6 +98,8 @@ func mapCardError(err error) error {
 		return errs.InvalidInput("invalid-pagination", "page and limit must not be negative", err)
 	case errors.Is(err, domain.ErrCategoryNotFound):
 		return errs.NotFound("category-not-found", "Category not found", err)
+	case errors.Is(err, domain.ErrCardNotFound):
+		return errs.NotFound("card-not-found", "Card not found", err)
 	default:
 		return err
 	}

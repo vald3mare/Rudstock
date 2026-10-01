@@ -8,6 +8,7 @@ func NewRouter(cards *CardHandler, categories *CategoryHandler) http.Handler {
 	// public
 	mux.HandleFunc("GET /categories", categories.List)
 	mux.HandleFunc("GET /cards", cards.List)
+	mux.HandleFunc("GET /cards/{id}", cards.Get)
 
 	// admin
 	mux.HandleFunc("POST /admin/cards", cards.Create)

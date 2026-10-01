@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/vald3mare/Rudstock/backend/internal/platform/errs"
 )
 
@@ -59,4 +60,15 @@ func QueryInt64(r *http.Request, key string) (int64, error) {
 	}
 
 	return v, nil
+}
+
+// PathUUID читает параметр пути ({key} в шаблоне маршрута) и разбирает его как UUID.
+// Не UUID (например /cards/abc) это ошибка клиента, 400.
+func PathUUID(r *http.Request, key string) (uuid.UUID, error) {
+	id, err := uuid.Parse(r.PathValue(key))
+	if err != nil {
+		return uuid.Nil, errs.InvalidInput("invalid-path-param", "Path parameter "+key+" must be a valid UUID", err)
+	}
+
+	return id, nil
 }
