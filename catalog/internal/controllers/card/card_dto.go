@@ -1,0 +1,93 @@
+package card
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/vald3mare/Rudstock/catalog/internal/models"
+	"github.com/vald3mare/Rudstock/catalog/internal/services/card"
+)
+
+type CreateCardRequest struct {
+	CategoryID  int64  `json:"category_id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Price       int64  `json:"price"`
+	PhotoURL    string `json:"photo_url"`
+}
+
+// UpdateCardRequest тело PATCH: указатели, чтобы отличить отсутствующее поле от нулевого значения.
+// Ограничение: явный null в JSON тоже станет nil, то есть "не менять поле".
+type UpdateCardRequest struct {
+	CategoryID  *int64  `json:"category_id"`
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
+	Price       *int64  `json:"price"`
+	PhotoURL    *string `json:"photo_url"`
+}
+
+type CreateCardResponse struct {
+	CardID uuid.UUID `json:"card_id"`
+}
+
+type CardResponse struct {
+	ID          uuid.UUID `json:"id"`
+	CategoryID  int64     `json:"category_id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Price       int64     `json:"price"` // копейки
+	PhotoURL    string    `json:"photo_url"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type ListCardsResponse struct {
+	Items []CardResponse `json:"items"`
+	Total int64          `json:"total"`
+}
+
+// toCardResponses отделяет JSON-формат от доменной модели.
+func toCardResponses(cards []models.Card) []CardResponse {
+	// make, а не var: пустой список должен уйти как [], а не null
+	resp := make([]CardResponse, 0, len(cards))
+	for _, c := range cards {
+		resp = append(resp, toCardResponse(c))
+	}
+	return resp
+}
+
+// toCardResponse отделяет JSON-формат от доменной модели для одной карточки.
+// Единственное место маппинга полей: toCardResponses вызывает её для каждого элемента.
+func toCardResponse(c models.Card) CardResponse {
+	return CardResponse{
+		ID:          c.ID,
+		CategoryID:  c.CategoryID,
+		Title:       c.Title,
+		Description: c.Description,
+		Price:       c.Price,
+		PhotoURL:    c.PhotoURL,
+		CreatedAt:   c.CreatedAt,
+	}
+}
+
+// toInput переводит запрос по контракту во входные данные сервиса
+// метод только читает поля, а не модфицирует, поэтому по значению передаем ресивера
+func (r CreateCardRequest) toInput() card.CreateCardInput {
+	return card.CreateCardInput{
+		CategoryID:  r.CategoryID,
+		Title:       r.Title,
+		Description: r.Description,
+		Price:       r.Price,
+		PhotoURL:    r.PhotoURL,
+	}
+}
+
+// toInput переводит тело PATCH во входные данные сервиса, указатели передаются как есть
+func (r UpdateCardRequest) toInput() card.UpdateCardInput {
+	return card.UpdateCardInput{
+		CategoryID:  r.CategoryID,
+		Title:       r.Title,
+		Description: r.Description,
+		Price:       r.Price,
+		PhotoURL:    r.PhotoURL,
+	}
+}
