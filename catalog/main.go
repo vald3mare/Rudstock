@@ -72,7 +72,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", Health)
-	mux.Handle("/", a.Router)
+	mux.Handle("/", a.Router) // /admin/* защищён авторизацией внутри роутера, публичные ручки без неё
 
 	// Таймауты обязательны: без них зависшее соединение держит ресурсы бесконечно
 	server := &http.Server{

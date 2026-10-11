@@ -1,0 +1,9 @@
+.card {
+  border: 1px solid #e5e4e7;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.price {
+  font-weight: 600;
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Смоук-тест реализованных ручек: на каждый запрос сверяет код ответа
+# Смоук-тест ручек сервиса каталога: на каждый запрос сверяет код ответа
 # и подстроку тела (обычно slug ошибки), в конце печатает итог.
 #
 # Нужен запущенный сервер с базой после миграций. Создаёт свою категорию
@@ -8,13 +8,16 @@
 # если скрипт прервали (Ctrl+C) раньше.
 #
 # Запуск:
-#   scripts/smoke.sh                     # сервер на localhost:8081
-#   API=localhost:8082 scripts/smoke.sh  # другой адрес
+#   catalog/scripts/smoke.sh                     # из корня репозитория, сервер на localhost:8081
+#   scripts/smoke.sh                             # то же из папки catalog/
+#   API=localhost:8082 catalog/scripts/smoke.sh  # другой адрес
 #
 # Код выхода: 0 если всё прошло, 1 если хоть одна проверка упала.
 
 API=${API:-localhost:8081}
 J='Content-Type: application/json'
+# заголовок заглушки авторизации (middleware/auth): без него /admin/* отвечает 401
+TOKEN='X-Debug-Token: dev'
 pass=0
 fail=0
 
@@ -25,8 +28,18 @@ for _ in $(seq 1 30); do
 done
 
 # check <название> <ожидаемый код> <подстрока тела или -> <аргументы curl...>
+# Шлёт запрос с тестовым токеном: публичным ручкам он не мешает, админским нужен.
 # Тело последнего ответа остаётся в LAST_BODY, из него достаём созданные id.
 check() {
+  run_check "$@" -H "$TOKEN"
+}
+
+# check_anon то же самое, но без токена: для проверок, что /admin/* закрыт
+check_anon() {
+  run_check "$@"
+}
+
+run_check() {
   local name=$1 want=$2 sub=$3
   shift 3
   local out code body
@@ -55,10 +68,10 @@ CARD2=""
 # cleanup молча удаляет всё созданное: сначала карточки, потом категории,
 # иначе база не даст удалить категорию (409). Уже удалённое вернёт 404, это нормально.
 cleanup() {
-  [[ -n $CARD ]] && curl -s -o /dev/null -X DELETE "$API/admin/cards/$CARD"
-  [[ -n $CARD2 ]] && curl -s -o /dev/null -X DELETE "$API/admin/cards/$CARD2"
-  [[ -n $CAT ]] && curl -s -o /dev/null -X DELETE "$API/admin/categories/$CAT"
-  [[ -n $CAT2 ]] && curl -s -o /dev/null -X DELETE "$API/admin/categories/$CAT2"
+  [[ -n $CARD ]] && curl -s -o /dev/null -H "$TOKEN" -X DELETE "$API/admin/cards/$CARD"
+  [[ -n $CARD2 ]] && curl -s -o /dev/null -H "$TOKEN" -X DELETE "$API/admin/cards/$CARD2"
+  [[ -n $CAT ]] && curl -s -o /dev/null -H "$TOKEN" -X DELETE "$API/admin/categories/$CAT"
+  [[ -n $CAT2 ]] && curl -s -o /dev/null -H "$TOKEN" -X DELETE "$API/admin/categories/$CAT2"
 }
 trap cleanup EXIT
 
@@ -144,6 +157,29 @@ check "not found" 404 card-not-found -X PATCH "$API/admin/cards/00000000-0000-00
 
 echo "== routing"
 check "wrong method" 405 - -X PUT "$API/cards/$CARD"
+
+# здесь карточки и категории ещё существуют: проверяем, что без токена
+# их нельзя ни создать, ни поменять, ни удалить, а публичные ручки открыты
+echo "== auth: /admin/* without token"
+check_anon "create category" 401 unauthorized -X POST "$API/admin/categories" -H "$J" -d "{\"name\":\"$NAME-anon\"}"
+check_anon "update category" 401 unauthorized -X PATCH "$API/admin/categories/$CAT" -H "$J" -d '{"name":"hacked"}'
+check_anon "delete category" 401 unauthorized -X DELETE "$API/admin/categories/$CAT2"
+check_anon "create card" 401 unauthorized -X POST "$API/admin/cards" -H "$J" -d "{\"category_id\":$CAT,\"title\":\"x\",\"price\":1}"
+check_anon "update card" 401 unauthorized -X PATCH "$API/admin/cards/$CARD" -H "$J" -d '{"price":1}'
+check_anon "delete card" 401 unauthorized -X DELETE "$API/admin/cards/$CARD"
+check_anon "wrong token" 401 unauthorized -X DELETE "$API/admin/cards/$CARD" -H 'X-Debug-Token: nope'
+# 401 должен прийти до поиска маршрута: несуществующий админский путь не должен выдавать, что его нет
+check_anon "unknown admin path" 401 unauthorized "$API/admin/nope"
+# отказ ничего не изменил: карточка на месте, цена прежняя, категория не переименована
+check_anon "  card untouched" 200 '"price":13999' "$API/cards/$CARD"
+check_anon "  category untouched" 200 "\"name\":\"$NAME\"" "$API/categories"
+check_anon "  anon category not created" 200 - "$API/categories"
+[[ $LAST_BODY == *"$NAME-anon"* ]] && { fail=$((fail + 1)); echo "FAIL     anon category appeared in list"; }
+
+echo "== auth: public without token"
+check_anon "list categories" 200 '[' "$API/categories"
+check_anon "list cards" 200 '"items"' "$API/cards"
+check_anon "get card" 200 "\"id\":\"$CARD\"" "$API/cards/$CARD"
 
 # удаление в конце: это и проверка DELETE-ручек, и уборка за собой
 echo "== DELETE /admin/categories/{id} (with cards)"
