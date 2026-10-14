@@ -17,18 +17,21 @@ export default function ProductCard({ card }: ProductCardProps) {
   return (
     <article className={styles.card}>
       {card.photo_url ? (
-        <img src={card.photo_url} alt={card.title} width={240} height={240} />
+        // классы из модуля только через styles.*: строка "photo" не совпадёт с уникальным именем после сборки
+        <img className={styles.photo} src={card.photo_url} alt={card.title} />
       ) : (
-        <div role="img" aria-label="Фото отсутствует">
+        <div className={styles.photoPlaceholder} role="img" aria-label="Фото отсутствует">
           Нет фото
         </div>
       )}
 
-      <h2>{card.title}</h2>
+      {/*Контент карточки*/}
+      {/* h3: страница h1 -> секция каталога h2 -> карточка h3, уровни не перескакиваем */}
+      <h3>{card.title}</h3>
       {card.description && <p>{card.description}</p>}
 
       {/* копейки -> рубли и формат "149,99 ₽" */}
-      <p>{priceFormatter.format(card.price / 100)}</p>
+      <p className={styles.price}>{priceFormatter.format(card.price / 100)}</p>
     </article>
   )
 }

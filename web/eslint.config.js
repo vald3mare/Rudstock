@@ -85,6 +85,7 @@ export default tseslint.config(
             {
               target: [
                 './src/components',
+                './src/config',
                 './src/hooks',
                 './src/lib',
                 './src/types',

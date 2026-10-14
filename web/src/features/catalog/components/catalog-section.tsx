@@ -1,19 +1,25 @@
-import type { CatalogCard } from '../types/catalog-card'
+import type { CatalogCard } from '@/features/catalog/types/catalog-card'
 
-export default function CatalogSection({ cards }: { cards: CatalogCard[] }) {
+import styles from './catalog-section.module.css'
+import ProductCard from './product-card'
+
+type CatalogSectionProps = {
+  cards: CatalogCard[]
+}
+
+// CatalogSection раздел каталога: заголовок и сетка карточек. Саму карточку рисует ProductCard
+export default function CatalogSection({ cards }: CatalogSectionProps) {
   return (
     <section>
-      <h1>Каталог</h1>
-      <div className="catalog-grid">
+      <h2>Каталог</h2>
+      {/* ul/li: диктор объявит "список, N элементов"; key нужен React, чтобы отличать элементы списка */}
+      <ul className={styles.grid}>
         {cards.map((card) => (
-          <div key={card.id} className="catalog-card">
-            <img src={card.photo_url} alt={card.title} />
-            <h2>{card.title}</h2>
-            <p>{card.description}</p>
-            <p>{(card.price / 100).toFixed(2)} ₽</p>
-          </div>
+          <li key={card.id}>
+            <ProductCard card={card} />
+          </li>
         ))}
-      </div>
+      </ul>
     </section>
   )
 }
