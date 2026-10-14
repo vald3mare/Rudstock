@@ -1,0 +1,301 @@
+{
+  "service": "catalog",
+  "description": "Каталог: категории и карточки товаров. Срез общего контракта api/contract.json, только ручки этого сервиса; подробные правила и ошибки в api/contract.md",
+  "rules": {
+    "money": "копейки, int64",
+    "ids": "карточка: UUID строкой; категория: int64",
+    "error": {
+      "slug": "category-not-found",
+      "msg": "Category not found"
+    },
+    "access": "public без авторизации; /admin/* только сотрудники (пока не проверяется, auth в отдельном сервисе)"
+  },
+  "summary": {
+    "done": 10,
+    "todo": 16
+  },
+  "done": {
+    "public": {
+      "GET /health": {
+        "status": "done",
+        "response": {
+          "status": "ok"
+        }
+      },
+      "GET /categories": {
+        "status": "done",
+        "response": [
+          {
+            "id": 1,
+            "name": "Шины"
+          }
+        ]
+      },
+      "GET /cards": {
+        "status": "done",
+        "query": {
+          "category_id": 0,
+          "page": 1,
+          "limit": 20
+        },
+        "response": {
+          "items": [
+            {
+              "id": "uuid",
+              "category_id": 1,
+              "title": "Michelin Primacy 4 205/55 R16",
+              "description": "Шина летняя 205/55 R16",
+              "price": 14999,
+              "photo_url": "s3://photos/photo_1.jpg",
+              "created_at": "2026-09-30T12:00:00Z"
+            }
+          ],
+          "total": 1
+        },
+        "errors": [
+          400
+        ]
+      },
+      "GET /cards/{id}": {
+        "status": "done",
+        "response": {
+          "id": "uuid",
+          "category_id": 1,
+          "title": "Michelin Primacy 4 205/55 R16",
+          "description": "Шина летняя 205/55 R16",
+          "price": 14999,
+          "photo_url": "s3://photos/photo_1.jpg",
+          "created_at": "2026-09-30T12:00:00Z"
+        },
+        "errors": [
+          400,
+          404
+        ]
+      }
+    },
+    "admin": {
+      "POST /admin/cards": {
+        "status": "done",
+        "request": {
+          "category_id": 1,
+          "title": "Michelin Primacy 4 205/55 R16",
+          "description": "Шина летняя 205/55 R16",
+          "price": 14999,
+          "photo_url": "s3://photos/photo_1.jpg"
+        },
+        "response": {
+          "card_id": "uuid"
+        },
+        "errors": [
+          400,
+          404
+        ]
+      },
+      "POST /admin/categories": {
+        "status": "done",
+        "request": {
+          "name": "Шины"
+        },
+        "response": {
+          "category_id": 1
+        },
+        "errors": [
+          400,
+          409
+        ]
+      },
+      "PATCH /admin/cards/{id}": {
+        "status": "done",
+        "request": {
+          "category_id?": 1,
+          "title?": "...",
+          "description?": "...",
+          "price?": 12999,
+          "photo_url?": "..."
+        },
+        "response": "card (как GET /cards/{id})",
+        "errors": [
+          400,
+          404
+        ],
+        "todo": [
+          "status",
+          "атрибуты"
+        ]
+      },
+      "DELETE /admin/cards/{id}": {
+        "status": "done",
+        "response": "204 без тела",
+        "errors": [
+          400,
+          404
+        ],
+        "todo": [
+          "архивирование вместо удаления, 409 если есть в заказах"
+        ]
+      },
+      "PATCH /admin/categories/{id}": {
+        "status": "done",
+        "request": {
+          "name?": "Летние шины"
+        },
+        "response": {
+          "id": 1,
+          "name": "Летние шины"
+        },
+        "errors": [
+          400,
+          404,
+          409
+        ],
+        "todo": [
+          "sort"
+        ]
+      },
+      "DELETE /admin/categories/{id}": {
+        "status": "done",
+        "response": "204 без тела",
+        "errors": [
+          400,
+          404,
+          409
+        ]
+      }
+    }
+  },
+  "todo": {
+    "public": {
+      "GET /brands": {
+        "status": "todo",
+        "query": [
+          "category_id?"
+        ]
+      },
+      "GET /filters": {
+        "status": "todo",
+        "query": [
+          "category_id"
+        ],
+        "errors": [
+          404
+        ]
+      },
+      "GET /fitment/vehicles": {
+        "status": "todo",
+        "query": [
+          "make?",
+          "model?",
+          "year?"
+        ]
+      },
+      "GET /fitment/sizes": {
+        "status": "todo",
+        "query": [
+          "vehicle_id"
+        ],
+        "errors": [
+          404
+        ]
+      }
+    },
+    "admin": {
+      "GET /admin/cards": {
+        "status": "todo",
+        "query": [
+          "как GET /cards",
+          "status?"
+        ]
+      },
+      "GET /admin/cards/{id}": {
+        "status": "todo",
+        "errors": [
+          404
+        ]
+      },
+      "POST /admin/cards/bulk": {
+        "status": "todo",
+        "request": [
+          "ids",
+          "action"
+        ],
+        "errors": [
+          400
+        ]
+      },
+      "GET /admin/categories/{id}/attributes": {
+        "status": "todo",
+        "errors": [
+          404
+        ]
+      },
+      "POST /admin/categories/{id}/attributes": {
+        "status": "todo",
+        "request": [
+          "name",
+          "type",
+          "unit?",
+          "filterable"
+        ],
+        "errors": [
+          404,
+          409
+        ]
+      },
+      "PATCH /admin/attributes/{id}": {
+        "status": "todo",
+        "errors": [
+          404,
+          409
+        ]
+      },
+      "DELETE /admin/attributes/{id}": {
+        "status": "todo",
+        "errors": [
+          404,
+          409
+        ]
+      },
+      "POST /admin/uploads": {
+        "status": "todo",
+        "request": [
+          "content_type",
+          "size"
+        ],
+        "response": [
+          "upload_url",
+          "object_key"
+        ],
+        "errors": [
+          400
+        ]
+      },
+      "GET /admin/brands": {
+        "status": "todo"
+      },
+      "POST /admin/brands": {
+        "status": "todo",
+        "request": [
+          "name",
+          "logo_url?"
+        ],
+        "errors": [
+          409
+        ]
+      },
+      "PATCH /admin/brands/{id}": {
+        "status": "todo",
+        "errors": [
+          404,
+          409
+        ]
+      },
+      "DELETE /admin/brands/{id}": {
+        "status": "todo",
+        "errors": [
+          404,
+          409
+        ]
+      }
+    }
+  }
+}
