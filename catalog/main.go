@@ -13,6 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vald3mare/Rudstock/catalog/cmd/app"
+	"github.com/vald3mare/Rudstock/catalog/internal/infrastructure/middleware/cors"
 	"github.com/vald3mare/Rudstock/catalog/internal/platform/config"
 	"github.com/vald3mare/Rudstock/catalog/internal/platform/httpx"
 )
@@ -68,7 +69,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	a := app.NewApp(pool)
+	a := app.NewApp(pool, conf.DebugToken)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", Health)
@@ -76,8 +77,8 @@ func main() {
 
 	// Таймауты обязательны: без них зависшее соединение держит ресурсы бесконечно
 	server := &http.Server{
-		Addr:         conf.HTTPAddr, // Порт, который будет слушать сервер
-		Handler:      mux,           // Маршрутизатор с нашими эндпоинтами
+		Addr:         conf.HTTPAddr,                          // Порт, который будет слушать сервер
+		Handler:      cors.Middleware(conf.CORSOrigins, mux), // CORS снаружи всего, чтобы preflight не упирался в роутер
 		ReadTimeout:  time.Minute,
 		WriteTimeout: time.Minute,
 		IdleTimeout:  time.Minute,

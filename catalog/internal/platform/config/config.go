@@ -21,6 +21,11 @@ type Config struct {
 	LogLevel string `env:"LOG_LEVEL" envDefault:"INFO"`
 	// EnvMode различает окружения: development, staging, production.
 	EnvMode string `env:"ENV_MODE" envDefault:"development"`
+	// CORSOrigins это адреса фронта, которым браузер разрешит читать ответы, через запятую.
+	CORSOrigins []string `env:"CORS_ORIGINS" envSeparator:"," envDefault:"http://localhost:5173"`
+	// DebugToken это значение X-Debug-Token для /admin/* до появления сервиса auth.
+	// Секрет, поэтому без значения по умолчанию.
+	DebugToken string `env:"DEBUG_TOKEN,required"`
 }
 
 // Load читает .env (если он есть), затем конфигурацию из окружения

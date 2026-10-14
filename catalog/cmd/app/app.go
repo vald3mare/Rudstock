@@ -6,12 +6,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/vald3mare/Rudstock/catalog/internal/controllers"
-	cardctrl "github.com/vald3mare/Rudstock/catalog/internal/controllers/card"
-	categoryctrl "github.com/vald3mare/Rudstock/catalog/internal/controllers/category"
-	cardrepo "github.com/vald3mare/Rudstock/catalog/internal/repositories/card"
-	categoryrepo "github.com/vald3mare/Rudstock/catalog/internal/repositories/category"
+	cardCtrl "github.com/vald3mare/Rudstock/catalog/internal/controllers/card"
+	categoryCtrl "github.com/vald3mare/Rudstock/catalog/internal/controllers/category"
+	cardRepo "github.com/vald3mare/Rudstock/catalog/internal/repositories/card"
+	categoryRepo "github.com/vald3mare/Rudstock/catalog/internal/repositories/category"
 	cardsvc "github.com/vald3mare/Rudstock/catalog/internal/services/card"
-	categorysvc "github.com/vald3mare/Rudstock/catalog/internal/services/category"
+	categorySvc "github.com/vald3mare/Rudstock/catalog/internal/services/category"
 )
 
 // App собранное приложение каталога: все слои связаны, наружу отдаётся только роутер.
@@ -21,17 +21,17 @@ type App struct {
 
 // NewApp собирает слои снизу вверх: репозитории -> сервисы -> хендлеры -> роутер.
 // Пул один на все репозитории: отдельный пул на каждый означал бы лишние соединения к Postgres.
-func NewApp(pool *pgxpool.Pool) *App {
-	cardRepo := cardrepo.NewCardRepo(pool)
-	categoryRepo := categoryrepo.NewCategoryRepo(pool)
+func NewApp(pool *pgxpool.Pool, debugToken string) *App {
+	cardRepo := cardRepo.NewCardRepo(pool)
+	categoryRepo := categoryRepo.NewCategoryRepo(pool)
 
 	cardService := cardsvc.NewCardService(cardRepo)
-	categoryService := categorysvc.NewCategoryService(categoryRepo)
+	categoryService := categorySvc.NewCategoryService(categoryRepo)
 
-	cardHandler := cardctrl.NewCardHandler(cardService)
-	categoryHandler := categoryctrl.NewCategoryHandler(categoryService)
+	cardHandler := cardCtrl.NewCardHandler(cardService)
+	categoryHandler := categoryCtrl.NewCategoryHandler(categoryService)
 
 	return &App{
-		Router: controllers.NewRouter(cardHandler, categoryHandler),
+		Router: controllers.NewRouter(cardHandler, categoryHandler, debugToken),
 	}
 }

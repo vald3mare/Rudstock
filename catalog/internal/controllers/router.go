@@ -8,7 +8,7 @@ import (
 	"github.com/vald3mare/Rudstock/catalog/internal/infrastructure/middleware/auth"
 )
 
-func NewRouter(cards *card.CardHandler, categories *category.CategoryHandler) http.Handler {
+func NewRouter(cards *card.CardHandler, categories *category.CategoryHandler, debugToken string) http.Handler {
 	mux := http.NewServeMux()
 	adminMux := http.NewServeMux()
 
@@ -27,7 +27,7 @@ func NewRouter(cards *card.CardHandler, categories *category.CategoryHandler) ht
 
 	// всё под /admin/ сначала проходит авторизацию, потом ищет маршрут в adminMux;
 	// пути в adminMux полные, поэтому StripPrefix не нужен. Публичные ручки без неё
-	mux.Handle("/admin/", auth.Middleware(adminMux))
+	mux.Handle("/admin/", auth.Middleware(debugToken, adminMux))
 
 	return mux
 }
