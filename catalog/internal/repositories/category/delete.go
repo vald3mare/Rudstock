@@ -15,7 +15,7 @@ const deleteQuery = `
 
 // Delete удаляет категорию по id.
 // Если строки нет, возвращает models.ErrCategoryNotFound, если в ней есть карточки, models.ErrCategoryHasCards.
-func (r *CategoryRepo) Delete(ctx context.Context, id int64) error {
+func (r *categoryRepo) Delete(ctx context.Context, id int64) error {
 	tag, err := r.pool.Exec(ctx, deleteQuery, id)
 	if err != nil {
 		// 23503 foreign_key_violation: на категорию ссылаются карточки (cards.category_id)

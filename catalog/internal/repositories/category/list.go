@@ -14,7 +14,7 @@ const listQuery = `
 		ORDER BY name`
 
 // List читает все категории, отсортированные по имени.
-func (r *CategoryRepo) List(ctx context.Context) ([]models.Category, error) {
+func (r *categoryRepo) List(ctx context.Context) ([]models.Category, error) {
 	rows, err := r.pool.Query(ctx, listQuery)
 	if err != nil {
 		return nil, fmt.Errorf("select categories: %w", err)

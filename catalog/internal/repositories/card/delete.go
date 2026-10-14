@@ -9,7 +9,7 @@ import (
 )
 
 // Delete удаляет карточку по id. Если строки нет, возвращает models.ErrCardNotFound.
-func (r *CardRepo) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *cardRepo) Delete(ctx context.Context, id uuid.UUID) error {
 	const query = `
 		DELETE FROM cards
 		WHERE id = $1`

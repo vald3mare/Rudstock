@@ -16,7 +16,7 @@ const getQuery = `
 		WHERE id = $1`
 
 // Get читает карточку по id. Если строки нет, возвращает models.ErrCardNotFound.
-func (r *CardRepo) Get(ctx context.Context, id uuid.UUID) (models.Card, error) {
+func (r *cardRepo) Get(ctx context.Context, id uuid.UUID) (models.Card, error) {
 	c, err := scanCard(r.pool.QueryRow(ctx, getQuery, id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

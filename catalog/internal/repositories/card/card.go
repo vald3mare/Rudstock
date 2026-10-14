@@ -1,19 +1,45 @@
 package card
 
 import (
+	"context"
+
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vald3mare/Rudstock/catalog/internal/models"
 )
 
-// репа может быть открытой, тк сервис ничего не знает о репозитории, единственное где мы дергаем его, это в неэкспортируемом поле при вызове конструктора
-type CardRepo struct {
+// CardRepo что умеет репозиторий карточек; конструктор отдаёт его, а не структуру.
+// Требование сервиса описано отдельно, в services/card.CardRepo.
+type CardRepo interface {
+	// Create сохраняет карточку и возвращает сгенерированный id.
+	// Ошибки: models.ErrCategoryNotFound.
+	Create(ctx context.Context, card models.Card) (uuid.UUID, error)
+
+	// List возвращает карточки под фильтром (новые первыми) и их общее число без учёта limit/offset.
+	List(ctx context.Context, filter models.CardFilter) (cards []models.Card, total int64, err error)
+
+	// Get возвращает карточку по её идентификатору.
+	// Ошибки: models.ErrCardNotFound.
+	Get(ctx context.Context, id uuid.UUID) (models.Card, error)
+
+	// Update применяет patch и возвращает карточку после изменения.
+	// Ошибки: models.ErrCardNotFound, models.ErrCategoryNotFound.
+	Update(ctx context.Context, id uuid.UUID, patch models.CardPatch) (models.Card, error)
+
+	// Delete удаляет карточку.
+	// Ошибки: models.ErrCardNotFound.
+	Delete(ctx context.Context, id uuid.UUID) error
+}
+
+// cardRepo закрытая: создаётся только через NewCardRepo, наружу отдаётся интерфейс CardRepo, пул снаружи не виден
+type cardRepo struct {
 	pool *pgxpool.Pool
 }
 
 // NewCardRepo конструктор репозитория карточек.
-func NewCardRepo(pool *pgxpool.Pool) *CardRepo {
-	return &CardRepo{
+func NewCardRepo(pool *pgxpool.Pool) CardRepo {
+	return &cardRepo{
 		pool: pool,
 	}
 }

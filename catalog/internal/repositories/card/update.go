@@ -26,7 +26,7 @@ const updateQuery = `
 
 // Update применяет patch одним запросом и возвращает карточку после изменения.
 // Если карточки нет, возвращает models.ErrCardNotFound, если новой категории нет, models.ErrCategoryNotFound.
-func (r *CardRepo) Update(ctx context.Context, id uuid.UUID, patch models.CardPatch) (models.Card, error) {
+func (r *cardRepo) Update(ctx context.Context, id uuid.UUID, patch models.CardPatch) (models.Card, error) {
 	c, err := scanCard(r.pool.QueryRow(ctx, updateQuery,
 		id,
 		patch.CategoryID,

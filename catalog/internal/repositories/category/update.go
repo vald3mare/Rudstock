@@ -19,7 +19,7 @@ const updateQuery = `
 
 // Update применяет patch одним запросом и возвращает категорию после изменения.
 // Если категории нет, возвращает models.ErrCategoryNotFound, если имя занято, models.ErrCategoryExists.
-func (r *CategoryRepo) Update(ctx context.Context, id int64, patch models.CategoryPatch) (models.Category, error) {
+func (r *categoryRepo) Update(ctx context.Context, id int64, patch models.CategoryPatch) (models.Category, error) {
 	var c models.Category
 	err := r.pool.QueryRow(ctx, updateQuery, id, patch.Name).Scan(&c.ID, &c.Name)
 	if err != nil {

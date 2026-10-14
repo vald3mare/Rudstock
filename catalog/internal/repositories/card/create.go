@@ -17,7 +17,7 @@ const creteQuery = `
 		RETURNING id`
 
 // вот и сама реализация создания карточки, именно от сюда мы и ходим в бд
-func (r *CardRepo) Create(ctx context.Context, card models.Card) (uuid.UUID, error) {
+func (r *cardRepo) Create(ctx context.Context, card models.Card) (uuid.UUID, error) {
 	var card_id uuid.UUID
 	err := r.pool.QueryRow(ctx, creteQuery,
 		card.CategoryID,

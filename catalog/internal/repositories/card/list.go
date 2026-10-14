@@ -24,7 +24,7 @@ const countQuery = `
 		WHERE ($1::bigint = 0 OR category_id = $1)`
 
 // List читает страницу карточек и отдельным запросом общее число под фильтром.
-func (r *CardRepo) List(ctx context.Context, filter models.CardFilter) (cards []models.Card, total int64, err error) {
+func (r *cardRepo) List(ctx context.Context, filter models.CardFilter) (cards []models.Card, total int64, err error) {
 	rows, err := r.pool.Query(ctx, listQuery, filter.CategoryID, filter.Limit, filter.Offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("select cards: %w", err)

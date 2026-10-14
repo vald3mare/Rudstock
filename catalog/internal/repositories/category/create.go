@@ -16,7 +16,7 @@ const createQuery = `
 		RETURNING id`
 
 // Create вставляет категорию в categories и возвращает id, выданный базой.
-func (r *CategoryRepo) Create(ctx context.Context, category models.Category) (int64, error) {
+func (r *categoryRepo) Create(ctx context.Context, category models.Category) (int64, error) {
 	var category_id int64
 	err := r.pool.QueryRow(ctx, createQuery, category.Name).Scan(&category_id)
 	if err != nil {
