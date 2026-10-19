@@ -7,7 +7,7 @@ import (
 )
 
 // PATCH /admin/cards/{id}
-func (h *CardHandler) Update(w http.ResponseWriter, r *http.Request) {
+func (h *AdminCardHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := httpx.PathUUID(r, "id")
 	if err != nil {
 		httpx.WriteError(w, r, err)

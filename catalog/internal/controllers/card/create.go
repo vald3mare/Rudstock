@@ -7,7 +7,7 @@ import (
 )
 
 // POST /admin/cards
-func (h *CardHandler) Create(w http.ResponseWriter, r *http.Request) {
+func (h *AdminCardHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req CreateCardRequest
 	if err := httpx.DecodeJSON(w, r, &req); err != nil {
 		httpx.WriteError(w, r, err)

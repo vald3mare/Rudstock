@@ -7,7 +7,7 @@ import (
 )
 
 // POST /admin/categories
-func (h *CategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
+func (h *AdminCategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req CreateCategoryRequest
 	if err := httpx.DecodeJSON(w, r, &req); err != nil {
 		httpx.WriteError(w, r, err)

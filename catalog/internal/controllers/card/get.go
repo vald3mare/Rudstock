@@ -7,7 +7,7 @@ import (
 )
 
 // GET /cards/{id}
-func (h *CardHandler) Get(w http.ResponseWriter, r *http.Request) {
+func (h *PublicCardHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id, err := httpx.PathUUID(r, "id")
 	if err != nil {
 		httpx.WriteError(w, r, err)

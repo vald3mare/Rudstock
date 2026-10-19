@@ -7,7 +7,7 @@ import (
 )
 
 // PATCH /admin/categories/{id}
-func (h *CategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
+func (h *AdminCategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := httpx.PathInt64(r, "id")
 	if err != nil {
 		httpx.WriteError(w, r, err)

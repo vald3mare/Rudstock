@@ -7,7 +7,7 @@ import (
 )
 
 // DELETE /admin/cards/{id}
-func (h *CardHandler) Delete(w http.ResponseWriter, r *http.Request) {
+func (h *AdminCardHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := httpx.PathUUID(r, "id")
 	if err != nil {
 		httpx.WriteError(w, r, err)

@@ -8,7 +8,7 @@ import (
 )
 
 // GET /cards?category_id=&page=&limit=
-func (h *CardHandler) List(w http.ResponseWriter, r *http.Request) {
+func (h *PublicCardHandler) List(w http.ResponseWriter, r *http.Request) {
 	categoryID, err := httpx.QueryInt64(r, "category_id")
 	if err != nil {
 		httpx.WriteError(w, r, err)
