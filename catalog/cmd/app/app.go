@@ -28,10 +28,13 @@ func NewApp(pool *pgxpool.Pool, debugToken string) *App {
 	cardService := cardsvc.NewCardService(cardRepo)
 	categoryService := categorySvc.NewCategoryService(categoryRepo)
 
-	cardHandler := cardCtrl.NewCardHandler(cardService)
-	categoryHandler := categoryCtrl.NewCategoryHandler(categoryService)
+	// один сервис уходит в обе половины: каждая видит его только через свой узкий интерфейс
+	publicCards := cardCtrl.NewPublicCardHandler(cardService)
+	adminCards := cardCtrl.NewAdminCardHandler(cardService)
+	publicCategories := categoryCtrl.NewPublicCategoryHandler(categoryService)
+	adminCategories := categoryCtrl.NewAdminCategoryHandler(categoryService)
 
 	return &App{
-		Router: controllers.NewRouter(cardHandler, categoryHandler, debugToken),
+		Router: controllers.NewRouter(publicCards, adminCards, publicCategories, adminCategories, debugToken),
 	}
 }
