@@ -14,14 +14,13 @@ const (
 	RoleAdmin    Role = "admin"
 )
 
-// User пользователь: покупатели и сотрудники в одной таблице, различаются Role.
+// User учётные данные пользователя: покупатели и сотрудники в одной таблице, различаются Role.
+// Профиль (имя, телефон) сюда не входит: это данные будущего сервиса пользователей, связь по ID.
 type User struct {
 	ID            uuid.UUID
 	Email         string // в нижнем регистре, без пробелов по краям
-	EmailVerified bool
+	EmailVerified bool   // ставит POST /auth/email/verify
 	PasswordHash  string // argon2id; наружу не отдаётся никогда
-	Name          string
-	Phone         string // необязательный, пустая строка если не указан
 	Role          Role
 	IsActive      bool // false = заблокирован: login отвечает 403
 	CreatedAt     time.Time

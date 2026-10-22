@@ -1,18 +1,45 @@
 package auth
 
-import "context"
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
 
-//   "auth": {
-//     "POST /auth/register": { "status": "todo", "request": ["email", "password"], "response": ["access", "refresh", "user: {id, email, role}"], "errors": [400, 409, 429], "note": "роль всегда customer; name и phone не спрашиваем, заполняются в PATCH /me или при первом заказе" },
-//     "POST /auth/login": { "status": "todo", "request": ["email", "password"], "response": ["access", "refresh", "user: {id, email, role}"], "errors": [401, 403, 429] },
-//     "POST /auth/refresh": { "status": "todo", "request": ["refresh"], "response": ["access", "refresh"], "errors": [401] },
-//     "POST /auth/logout": { "status": "todo", "request": ["refresh"] },
-//     "POST /auth/email/verify": { "status": "todo", "request": ["token"], "errors": [400] },
-//     "POST /auth/password/forgot": { "status": "todo", "request": ["email"], "errors": [429], "note": "204 всегда, даже для несуществующего email" },
-//     "POST /auth/password/reset": { "status": "todo", "request": ["token", "password"], "errors": [400] }
-//   },
+	"github.com/alexedwards/argon2id"
+	"github.com/vald3mare/Rudstock/auth/internal/models"
+)
 
 func (s *authService) Login(ctx context.Context, in LoginUserInput) (AuthResult, error) {
+	email := strings.ToLower(strings.TrimSpace(in.Email))
 
-	return AuthResult{}, nil
+	user, err := s.userRepo.GetByEmail(ctx, email)
+	if errors.Is(err, models.ErrUserNotFound) {
+		// результат не важен, важно потраченное время (см. dummyHash)
+		_, _ = argon2id.ComparePasswordAndHash(in.Password, dummyHash)
+		return AuthResult{}, models.ErrInvalidCredentials
+	}
+	if err != nil {
+		return AuthResult{}, err
+	}
+
+	ok, err := argon2id.ComparePasswordAndHash(in.Password, user.PasswordHash)
+	if err != nil {
+		return AuthResult{}, fmt.Errorf("compare password: %w", err)
+	}
+	if !ok {
+		return AuthResult{}, models.ErrInvalidCredentials
+	}
+
+	// блокировку проверяем только после верного пароля: иначе 403 выдаёт, что такой email есть
+	if !user.IsActive {
+		return AuthResult{}, models.ErrUserInactive
+	}
+
+	tokens, err := s.startSession(ctx, user)
+	if err != nil {
+		return AuthResult{}, err
+	}
+
+	return AuthResult{Tokens: tokens, User: user}, nil
 }

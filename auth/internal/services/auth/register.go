@@ -13,11 +13,12 @@ import (
 func (s *authService) Register(ctx context.Context, in RegUserInput) (AuthResult, error) {
 	fmtEmail := strings.ToLower(strings.TrimSpace(in.Email))
 	addr, err := mail.ParseAddress(fmtEmail)
+
 	if err != nil || addr.Address != fmtEmail {
 		return AuthResult{}, models.ErrInvalidEmail
 	}
 
-	if len(in.Password) < 8 {
+	if !isStrongPassword(in.Password) {
 		return AuthResult{}, models.ErrWeakPassword
 	}
 
@@ -30,15 +31,19 @@ func (s *authService) Register(ctx context.Context, in RegUserInput) (AuthResult
 		Email:        fmtEmail,
 		PasswordHash: hash,
 		Role:         models.RoleCustomer,
-		IsActive:     true,
+		IsActive:     true, // false = заблокирован
 	}
 
 	id, err := s.userRepo.Create(ctx, user)
 	if err != nil {
 		return AuthResult{}, err
 	}
-
-	//TODO выпуск токена
 	user.ID = id
-	return AuthResult{User: user}, nil
+
+	tokens, err := s.startSession(ctx, user)
+	if err != nil {
+		return AuthResult{}, err
+	}
+
+	return AuthResult{Tokens: tokens, User: user}, nil
 }
