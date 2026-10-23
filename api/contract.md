@@ -320,8 +320,8 @@ Query-параметры:
 
 | Ручка | Принимает | Возвращает | Ошибки | Описание |
 |---|---|---|---|---|
-| `POST /auth/register` | `email, password, name, phone?` | `201` access + refresh, `{user: {id, email, name, role}}` | 400 email / слабый пароль, 409 email занят, 429 | регистрация покупателя, роль всегда `customer`; сразу вход |
-| `POST /auth/login` | `email, password` | access + refresh, `{user: {id, email, name, role}}` | 401, 403 заблокирован, 429 | вход. На неверный email и неверный пароль один и тот же 401, чтобы нельзя было перебором узнать, какие email есть |
+| `POST /auth/register` | `email, password` | `201` access + refresh, `{user: {id, email, role}}` | 400 email / слабый пароль, 409 email занят, 429 | регистрация покупателя, роль всегда `customer`; сразу вход. Имя и телефон не спрашиваем: их заполняют при первом заказе или в `PATCH /me` |
+| `POST /auth/login` | `email, password` | access + refresh, `{user: {id, email, role}}` | 401, 403 заблокирован, 429 | вход. На неверный email и неверный пароль один и тот же 401, чтобы нельзя было перебором узнать, какие email есть |
 | `POST /auth/refresh` | refresh | новая пара токенов | 401 | продление сессии, старый refresh перестаёт работать |
 | `POST /auth/logout` | refresh | `204` | — | выход, refresh отзывается |
 | `POST /auth/email/verify` | `token` из письма | `204` | 400 токен неверный / истёк | подтверждение email |
@@ -337,7 +337,7 @@ Query-параметры:
 | Ручка | Принимает | Возвращает | Ошибки | Описание |
 |---|---|---|---|---|
 | `GET /me` | — | `{id, email, email_verified, name, phone, role}` | 401 | профиль, заодно «кто я» для фронта (и админки тоже) |
-| `PATCH /me` | `name?, phone?` | профиль | 400 | правка профиля; email и роль так не меняются |
+| `PATCH /me` | `name?, phone?` | профиль | 400 | правка профиля; email и роль так не меняются. После регистрации `name` и `phone` пустые, заполняются здесь или при первом заказе |
 | `POST /me/password` | `old_password, new_password` | `204` | 400 слабый пароль, 401 старый неверный | смена пароля, остальные сессии отзываются |
 | `GET /me/addresses`, `POST /me/addresses` | `city, street, house, flat?, comment?` | адреса / `{address_id}` | 400 | сохранённые адреса доставки для оформления заказа |
 | `PATCH/DELETE /me/addresses/{id}` | поля адреса | адрес / `204` | 404 | правка/удаление адреса; чужой адрес тоже 404 |
